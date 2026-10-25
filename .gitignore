@@ -1,0 +1,8 @@
+.env
+.venv/
+__pycache__/
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/*TEMPLATE.csv
+data/processed/*
+!data/processed/.gitkeep

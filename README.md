@@ -1,129 +1,47 @@
 # ChargeGap India - Slice 0
 
-A small Python project that builds an interactive map of **Tamil Nadu districts**
-coloured by a basic **EV charging gap score**, with public EV chargers shown as points.
+Builds an interactive map of a state's districts coloured by a basic **EV charging gap score**, with public
+chargers as points. One state, one simple score, no forecast. Everything that can change (state, data sources,
+thresholds, colours) is in `src/config.py`. The logic files contain no district lists or spelling tables.
 
-This is a **Slice 0 prototype**: one state, one simple score, no forecasting.
-
-## What it produces
-
-| File | What it is |
-|---|---|
-| `outputs/tn_gap_map.html` | Interactive map (open in any browser) |
-| `outputs/district_gap_scores.csv` | One row per district: EVs, chargers, gap score, rank, data flag |
-
-## Install
-
-Requires **Python 3.10+**.
-
+## Install and run
 ```bash
-cd chargegap
 python -m venv .venv
-# Windows:      .venv\Scripts\activate
-# macOS/Linux:  source .venv/bin/activate
+# Windows: .venv\Scripts\activate     macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
+python run_all.py          # runs everything; first run needs internet
+python tests/test_resolver.py   # offline test of the name matching
 ```
+Outputs: `outputs/tn_gap_map.html` (map) and `outputs/district_gap_scores.csv`.
 
-## Run
-
-```bash
-python run_all.py      # runs everything, in order
-python checks.py       # prints sanity checks (also runs at the end of run_all.py)
-```
-
-The first run downloads the boundaries and chargers and saves them in `data/raw/`.
-After that the project works **offline**. To refresh a download, delete its file in `data/raw/`.
-
-### Optional: OpenChargeMap
-Copy `.env.example` to `.env` and put your key in it:
-```
-OCM_API_KEY=your_key_here
-```
-If the key is missing, only OpenStreetMap chargers are used. When both are used,
-each charger keeps a `source` column (`OSM` or `OCM`).
-
-### Required by hand: VAHAN EV counts
-VAHAN has no clean API, so export the numbers yourself and save them as
-`data/raw/vahan_tn_ev_by_district.csv`. A template is created for you at
-`data/raw/vahan_tn_ev_by_district_TEMPLATE.csv`.
-
-| column | required | meaning |
+## Where the data comes from
+| Data | Source | How |
 |---|---|---|
-| `district` | yes | district name |
-| `ev_total` | yes | total registered EVs in the district |
-| `two_wheeler`, `three_wheeler`, `four_wheeler`, `bus` | no | breakdown (if `ev_total` is blank, these are added up) |
-| `population` | no | if present, EVs per 100,000 people are also computed |
+| District boundaries | `udit-001/india-maps-data` (pinned commit) | downloaded automatically |
+| Chargers | OpenStreetMap (Overpass), optional OpenChargeMap | downloaded automatically, search area = bounds of the boundaries |
+| EV counts | VAHAN export | **you provide** `data/raw/vahan_tn_ev_by_district.csv` (district OR rto level) |
+| Name matching | exact -> fuzzy spelling -> OpenStreetMap Nominatim geocoding | automatic, cached |
 
-Rows whose district is `EXAMPLE` are ignored.
-**If the file is missing, or a district has no value, a placeholder number is used and
-clearly labelled `synthetic`** (`data_flag` column, map popup, and a warning on the map).
+## VAHAN file
+Columns: `district` **or** `rto`, then `ev_total` (or `two_wheeler`, `three_wheeler`, `four_wheeler`, `bus`), optional `population`.
+RTO rows are placed in districts by geocoding the RTO name; rows of the same district are added together.
+Every name that was not an exact match is printed and saved in `data/processed/vahan_name_resolution.csv`: **check it by eye**.
+Districts with no EV count are left empty ("no EV data", not ranked). Nothing is invented unless you set `ALLOW_SYNTHETIC = True`
+in `config.py`; then invented values are flagged `synthetic`.
 
-## Project layout
-
-```
-chargegap/
-  data/raw/         downloads and manual inputs
-  data/processed/   intermediate files made by the code
-  outputs/          final CSV and HTML map
-  src/
-    utils.py            shared helpers (paths, name matching, download retries)
-    load_boundaries.py  step 1: district polygons
-    fetch_chargers.py   step 2: chargers from OpenStreetMap (+ OpenChargeMap)
-    load_vahan.py       step 3: EV counts (real or flagged synthetic)
-    build_scores.py     steps 4-5: spatial join, gap score, ranking
-    make_map.py         step 6: Folium map
-  run_all.py        runs everything
-  checks.py         sanity checks
-```
-
-## Gap score definition
-
-```
-gap_score = EVs registered in the district / public chargers in the district
-```
-
-- **Higher = more EVs per charger = more underserved.**
-- If a district has **0 chargers** no division is done. It is marked `no chargers`,
-  shown in a separate purple colour, and ranked as **most underserved** (rank 1 = most underserved).
-- Among districts with chargers, rank follows the gap score (highest first).
-- If a `population` column is supplied, `evs_per_100k = ev_total / population * 100,000` is also output.
-
-## How it works (plain language)
-
-1. Download district polygons and keep Tamil Nadu.
-2. Ask OpenStreetMap for every `amenity=charging_station` in Tamil Nadu.
-3. Read the EV counts per district (or use flagged placeholders).
-4. For each charger, find which district polygon contains it (point-in-polygon join), and check
-   that *assigned + outside = total fetched*.
-5. Divide EVs by chargers, rank the districts, save the CSV.
-6. Draw the map.
-
-## Data sources and licences
-
-- **OpenStreetMap** (chargers) - (c) OpenStreetMap contributors, licensed under the
-  [Open Database Licence (ODbL)](https://www.openstreetmap.org/copyright). Any use or
-  publication of results must credit "(c) OpenStreetMap contributors".
-- **DataMeet India district boundaries** (Census 2011) -
-  <https://github.com/datameet/maps>. Check the licence stated in that repository and
-  credit DataMeet.
-- **OpenChargeMap** (optional) - <https://openchargemap.org>. Check its data licence and
-  attribution terms before publishing.
-- **VAHAN** (Government of India vehicle registration dashboard) - exported manually.
-  Check the portal's terms of use.
+## Gap score
+`gap_score = EVs in district / public chargers in district` (higher = more underserved).
+Districts with 0 chargers: see `NO_CHARGER_POLICY` in `config.py`.
+`smoothed` (default): score = EVs / max(chargers, 1), so a district with a handful of EVs does not outrank a large one.
+`first`: every district with 0 chargers ranks above all others.
 
 ## Limitations
+- OSM charger data is incomplete; one station can appear as several points (no deduplication yet).
+- The boundary file is a third-party compilation with mixed source years and may lack the newest districts; the run prints the count.
+- Fuzzy and geocoded matches can be wrong. Always read the name check list.
+- No forecast, optimiser or dashboard yet.
+- Charger types and speeds are not distinguished.
 
-- **OSM charger data is incomplete.** Some chargers are missing, outdated, or have no name/operator.
-  A low charger count may partly reflect missing mapping, not missing chargers.
-- **VAHAN data is entered manually.** Typos, wrong filters or a different date range will change results.
-- **No deduplication yet.** If OSM and OpenChargeMap both list the same station, it is counted twice.
-  A single station with several plugs may also appear as several points.
-- **No forecast yet.** The score is a snapshot of today, not a prediction.
-- **All chargers count equally.** Slow and fast chargers, and public vs. restricted access, are not distinguished.
-- **Boundaries are from the 2011 Census.** That file has **32** districts; Tamil Nadu now has 38.
-  Newer districts (e.g. Tenkasi, Tirupathur, Ranipet, Chengalpattu, Kallakurichi, Mayiladuthurai)
-  have no polygon of their own. The run prints any VAHAN rows that cannot be matched. For Slice 0,
-  add their EVs to the parent 2011 district in your VAHAN CSV, and note that you did so.
-- District borders and EV counts follow different calendars, so small mismatches are expected.
-- Chargers just outside a polygon (for example on the coast) are reported as "outside districts"
-  and are not counted in any district.
+## Licences and attribution
+OpenStreetMap data: (c) OpenStreetMap contributors, ODbL. Boundaries: see the `india-maps-data` repository's licence notes.
+OpenChargeMap and VAHAN: check their terms before publishing results.
