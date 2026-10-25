@@ -1,6 +1,6 @@
 """
 Runs the whole Slice 0 pipeline in order:
-  1 boundaries -> 2 chargers -> 3 VAHAN check -> 4/5 spatial join + scores -> 6 map -> 7 checks
+  1 boundaries -> 2 VAHAN check -> 3 chargers -> 4/5 spatial join + scores -> 6 map -> 7 checks
 Usage:  python run_all.py     (downloads are cached in data/raw/, so later runs work offline)
 """
 import sys
@@ -28,8 +28,8 @@ def run_step(label, function):
 
 if __name__ == "__main__":
     run_step("Step 1: district boundaries", load_boundaries.main)
-    run_step("Step 3: VAHAN file check", load_vahan.main)
-    run_step("Steps 2, 4, 5: chargers, spatial join, gap scores", build_scores.main)
+    run_step("Step 2: VAHAN file check", load_vahan.main)
+    run_step("Steps 3, 4, 5: chargers, spatial join, gap scores", build_scores.main)
     run_step("Step 6: interactive map", make_map.main)
     run_step("Step 7: sanity checks", checks.main)
     print("\nDone. Open outputs/tn_gap_map.html in your browser.")

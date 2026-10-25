@@ -1,23 +1,50 @@
 """
-STEP 3 - EV counts from a VAHAN export.
-Input: data/raw/vahan_tn_ev_by_district.csv  (file name set below)
+STEP 2 - EV counts from a VAHAN export.
+Input: data/raw/vahan_tn_ev_by_district.csv (or data/samples/ fallback)
   * It may have a 'district' column (district level) OR an 'rto' column (RTO level, as VAHAN scrapers produce).
   * Names are matched to the district polygons automatically (see resolve_districts.py). No spelling table.
   * RTO rows that belong to the same district are added together.
 Districts with no EV count are left EMPTY ("no EV data"). Nothing is invented unless you switch on
 ALLOW_SYNTHETIC in config.py, and then every invented value is flagged "synthetic".
 """
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
 import config
 from resolve_districts import resolve_names
-from utils import PROCESSED, RAW, ensure_dirs
+from utils import PROCESSED, RAW, ROOT, SAMPLES, ensure_dirs
 
-VAHAN_FILE = RAW / "vahan_tn_ev_by_district.csv"
+RAW_VAHAN_FILE = RAW / "vahan_tn_ev_by_district.csv"
 TEMPLATE_FILE = RAW / "vahan_tn_ev_by_district_TEMPLATE.csv"
 RESOLUTION_LOG = PROCESSED / "vahan_name_resolution.csv"
 TYPE_COLUMNS = ["two_wheeler", "three_wheeler", "four_wheeler", "bus"]
+
+
+def get_vahan_source():
+    """
+    Find which VAHAN file to read:
+    1. data/raw/vahan_tn_ev_by_district.csv first
+    2. data/samples/ (config.VAHAN_SAMPLE_FILE) if the raw file is missing
+    Returns (path_to_file or None, display_string or None).
+    """
+    if RAW_VAHAN_FILE.exists():
+        return RAW_VAHAN_FILE, f"data/raw/{RAW_VAHAN_FILE.name}"
+
+    sample_setting = getattr(config, "VAHAN_SAMPLE_FILE", "vahan_tn_ev_by_district.csv")
+    sample_candidate = Path(sample_setting)
+    if sample_candidate.is_absolute():
+        sample_path = sample_candidate
+    elif (ROOT / sample_candidate).exists():
+        sample_path = ROOT / sample_candidate
+    else:
+        sample_path = SAMPLES / sample_candidate.name
+
+    if sample_path.exists():
+        return sample_path, f"data/samples/{sample_path.name}"
+
+    return None, None
 
 
 def write_template():
@@ -34,13 +61,15 @@ def _numbers(series):
 
 def read_vahan_file():
     """Return (table, name_column). Empty table if the file does not exist."""
-    if not VAHAN_FILE.exists():
+    source_path, display_name = get_vahan_source()
+    if source_path is None:
         return pd.DataFrame(columns=["district", "ev_total"]), "district"
-    df = pd.read_csv(VAHAN_FILE)
+    print(f"  using VAHAN file: {display_name}")
+    df = pd.read_csv(source_path)
     df.columns = [c.strip().lower() for c in df.columns]
     name_col = "district" if "district" in df.columns else "rto" if "rto" in df.columns else None
     if name_col is None:
-        raise ValueError(f"{VAHAN_FILE.name} needs a 'district' or an 'rto' column. Found: {list(df.columns)}")
+        raise ValueError(f"{source_path.name} needs a 'district' or an 'rto' column. Found: {list(df.columns)}")
     df = df[~df[name_col].astype(str).str.upper().str.contains("EXAMPLE")].copy()
     for col in ["ev_total", "population"] + TYPE_COLUMNS:
         if col in df.columns:
@@ -55,7 +84,7 @@ def read_vahan_file():
             print(f"  ev_total was blank for {int(fill.sum())} row(s): using the sum of the vehicle-type columns.")
         df.loc[fill, "ev_total"] = type_sum[fill]
     if "ev_total" not in df.columns:
-        raise ValueError(f"{VAHAN_FILE.name} needs an 'ev_total' column (or the vehicle-type columns).")
+        raise ValueError(f"{source_path.name} needs an 'ev_total' column (or the vehicle-type columns).")
     return df, name_col
 
 
@@ -105,8 +134,12 @@ def load_vahan(boundaries, geocode_fn=None):
 def main():
     ensure_dirs()
     write_template()
-    state = "found" if VAHAN_FILE.exists() else "NOT found (all districts will show 'no EV data')"
-    print(f"[3/5] VAHAN: {VAHAN_FILE.name} {state}.")
+    source_path, display_name = get_vahan_source()
+    if source_path is not None:
+        state = f"found ({display_name})"
+    else:
+        state = f"{RAW_VAHAN_FILE.name} NOT found in data/raw/ or data/samples/ (all districts will show 'no EV data')"
+    print(f"[2/5] VAHAN: {state}.")
 
 
 if __name__ == "__main__":

@@ -33,10 +33,16 @@ USER_AGENT = "ChargeGap-Slice0/0.2 (educational prototype)"
 RETRY_ATTEMPTS = 4
 RETRY_WAIT_S = 5
 
+# ---- VAHAN EV data --------------------------------------------------------
+# If data/raw/vahan_tn_ev_by_district.csv is missing, load_vahan.py falls back to this sample in data/samples/
+VAHAN_SAMPLE_FILE = "vahan_tn_ev_by_district.csv"
+
 # ---- Scoring --------------------------------------------------------------
 # "first"    : districts with 0 chargers rank as most underserved (biggest EV count first)
 # "smoothed" : score = EVs / max(chargers, 1), so tiny-EV districts do not jump to rank 1
 NO_CHARGER_POLICY = "smoothed"
+# Whether gap score measures EVs per station ("stations") or EVs per port ("ports")
+GAP_UNIT = "stations"
 
 # Synthetic EV numbers are OFF by default. If you turn this on, missing districts get random
 # values between the smallest and largest REAL value, and are flagged "synthetic".

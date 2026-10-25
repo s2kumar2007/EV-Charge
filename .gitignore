@@ -6,3 +6,5 @@ data/raw/*
 !data/raw/*TEMPLATE.csv
 data/processed/*
 !data/processed/.gitkeep
+!data/samples/
+!data/samples/**

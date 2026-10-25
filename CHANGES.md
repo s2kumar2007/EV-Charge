@@ -8,3 +8,7 @@
 - Default scoring policy changed to "smoothed" (see README).
 - Added `.gitignore` (keeps `.env` and caches out of GitHub) and `tests/test_resolver.py`.
 - Fixed README path (`cd chargegap`).
+- Integer ranks: district_gap_scores.csv saves rank as nullable Int64 (integers, empty when no EV data); checks.py prints integer ranks while GeoJSON keeps float/null for map compatibility.
+- Step labels: run_all.py printed steps renamed to sequential 1-7 order, and bracketed module counters ([1/5] to [5/5]) aligned to that order.
+- VAHAN data in repo: added committed data/samples/ folder tracked in git with VAHAN_SAMPLE_FILE fallback in load_vahan.py when data/raw/ file is missing.
+- Charging ports count: added ports/ports_known columns to chargers, port_count and gap_unit to scores, GAP_UNIT setting ("stations" or "ports"), and capacity defaults to 1 port when unknown.

@@ -15,10 +15,11 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"              # downloads and hand-made inputs
 PROCESSED = ROOT / "data" / "processed"  # files made by our code
 OUTPUTS = ROOT / "outputs"               # final CSV and HTML map
+SAMPLES = ROOT / "data" / "samples"      # sample data committed to the repo
 
 
 def ensure_dirs():
-    for folder in (RAW, PROCESSED, OUTPUTS):
+    for folder in (RAW, PROCESSED, OUTPUTS, SAMPLES):
         folder.mkdir(parents=True, exist_ok=True)
 
 

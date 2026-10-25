@@ -1,5 +1,5 @@
 """
-STEP 2 - Public EV chargers.
+STEP 3 - Public EV chargers.
 Source 1 (always): OpenStreetMap via Overpass (amenity=charging_station).
 Source 2 (optional): OpenChargeMap, only if OCM_API_KEY is set in .env.
 The search area is the bounding box of the district boundaries, so nothing about the state is hardcoded.
@@ -9,6 +9,7 @@ No deduplication yet (that is Slice 1). Raw answers are cached in data/raw/.
 import json
 import os
 
+import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 
@@ -48,6 +49,32 @@ def fetch_osm_raw(bounds, force=False):
     raise RuntimeError(f"Could not fetch OpenStreetMap chargers from any Overpass server. Last error: {last_error}")
 
 
+def parse_ports(val):
+    """
+    Parse a capacity (OSM) or NumberOfPoints (OCM) value.
+    Returns (ports: int, ports_known: bool).
+    A valid positive integer returns (val, True).
+    Missing, invalid, zero or negative values default to (1, False).
+    """
+    if val is None or pd.isna(val):
+        return 1, False
+    try:
+        if isinstance(val, str):
+            val = val.strip()
+            num = int(val)
+        elif isinstance(val, (int, np.integer)):
+            num = int(val)
+        elif isinstance(val, float) and val.is_integer():
+            num = int(val)
+        else:
+            return 1, False
+        if num > 0:
+            return num, True
+    except (ValueError, TypeError, OverflowError):
+        pass
+    return 1, False
+
+
 def parse_osm(data):
     rows = []
     for element in data.get("elements", []):
@@ -58,10 +85,12 @@ def parse_osm(data):
             lat, lon = element["center"]["lat"], element["center"]["lon"]
         else:
             continue
+        ports, ports_known = parse_ports(tags.get("capacity"))
         rows.append({"source": "OSM", "name": tags.get("name") or tags.get("brand") or "",
                      "operator": tags.get("operator") or tags.get("brand") or "",
                      "latitude": lat, "longitude": lon,
-                     "source_id": f"{element.get('type')}/{element.get('id')}"})
+                     "source_id": f"{element.get('type')}/{element.get('id')}",
+                     "ports": ports, "ports_known": ports_known})
     return rows
 
 
@@ -84,10 +113,12 @@ def parse_ocm(data):
         address = poi.get("AddressInfo") or {}
         if address.get("Latitude") is None or address.get("Longitude") is None:
             continue
+        ports, ports_known = parse_ports(poi.get("NumberOfPoints"))
         rows.append({"source": "OCM", "name": address.get("Title") or "",
                      "operator": (poi.get("OperatorInfo") or {}).get("Title") or "",
                      "latitude": address["Latitude"], "longitude": address["Longitude"],
-                     "source_id": str(poi.get("ID"))})
+                     "source_id": str(poi.get("ID")),
+                     "ports": ports, "ports_known": ports_known})
     return rows
 
 
@@ -107,7 +138,8 @@ def fetch_chargers(boundaries, force=False):
     else:
         print("  OCM: no OCM_API_KEY in .env -> using OpenStreetMap only.")
 
-    chargers = pd.DataFrame(rows, columns=["source", "name", "operator", "latitude", "longitude", "source_id"])
+    chargers = pd.DataFrame(rows, columns=["source", "name", "operator", "latitude", "longitude",
+                                           "source_id", "ports", "ports_known"])
     chargers.to_csv(CHARGERS_OUT, index=False)
     return chargers
 
@@ -115,7 +147,7 @@ def fetch_chargers(boundaries, force=False):
 def main():
     from load_boundaries import load_boundaries
     chargers = fetch_chargers(load_boundaries())
-    print(f"[2/5] Chargers: {len(chargers)} fetched in the search area (some may lie outside the districts).")
+    print(f"[3/5] Chargers: {len(chargers)} fetched in the search area (some may lie outside the districts).")
     if len(chargers):
         print("  by source:", chargers["source"].value_counts().to_dict())
     else:

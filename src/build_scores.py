@@ -1,9 +1,10 @@
 """
 STEPS 4 + 5 - Spatial join and gap score.
-  * Put every charger into the district polygon that contains it; count chargers per district.
-  * gap_score = EVs in district / public chargers in district  (higher = more underserved)
+  * Put every charger into the district polygon that contains it; count chargers and ports per district.
+  * gap_score = EVs in district / chargers (or ports) in district  (higher = more underserved)
   * status: ok / no chargers / no EV data.  Districts with no EV data are not ranked.
   * The treatment of districts with 0 chargers is set by NO_CHARGER_POLICY in config.py.
+  * The scoring unit (stations or ports) is set by GAP_UNIT in config.py.
 """
 import geopandas as gpd
 import numpy as np
@@ -36,21 +37,30 @@ def assign_chargers_to_districts(chargers, boundaries):
 def rank_districts(df):
     """Add gap_score, status and rank (rank 1 = most underserved). Districts without EV data get no rank."""
     df = df.copy()
+    gap_unit = getattr(config, "GAP_UNIT", "stations")
+    unit_col = "port_count" if gap_unit == "ports" else "charger_count"
+    df["gap_unit"] = gap_unit
+
     ev = df["ev_total"].astype(float)
-    has_ev, has_ch = ev.notna(), df["charger_count"] > 0
+    units = df[unit_col].astype(float) if unit_col in df.columns else df["charger_count"].astype(float)
+    has_ev, has_ch = ev.notna(), units > 0
     df["status"] = np.select([~has_ev, ~has_ch], ["no EV data", "no chargers"], default="ok")
-    df["gap_score"] = np.where(has_ev & has_ch, ev / df["charger_count"].replace(0, np.nan), np.nan)
+    df["gap_score"] = np.where(has_ev & has_ch, ev / units.replace(0, np.nan), np.nan)
 
     ranked = df[has_ev].copy()
     ranked_ev = ranked["ev_total"].astype(float)
+    ranked_units = ranked[unit_col].astype(float) if unit_col in ranked.columns else ranked["charger_count"].astype(float)
     if config.NO_CHARGER_POLICY == "smoothed":
-        ranked["gap_score"] = ranked_ev / ranked["charger_count"].clip(lower=1)
+        ranked["gap_score"] = ranked_ev / ranked_units.clip(lower=1)
         order = ranked.assign(_ev=ranked_ev).sort_values(["gap_score", "_ev"], ascending=False)
     else:  # "first"
-        order = ranked.assign(_none=(ranked["charger_count"] == 0).astype(int),
+        order = ranked.assign(_none=(ranked_units == 0).astype(int),
                               _score=ranked["gap_score"].fillna(0), _ev=ranked_ev
                               ).sort_values(["_none", "_score", "_ev"], ascending=False)
-    df.loc[order.index, "rank"] = np.arange(1, len(order) + 1)
+    df["rank"] = pd.Series(pd.NA, index=df.index, dtype="Int64")
+    if len(order):
+        df.loc[order.index, "rank"] = np.arange(1, len(order) + 1, dtype="int64")
+    df["rank"] = df["rank"].astype("Int64")
     if config.NO_CHARGER_POLICY == "smoothed":
         df.loc[ranked.index, "gap_score"] = ranked["gap_score"]
     df["gap_score"] = df["gap_score"].round(2)
@@ -75,12 +85,15 @@ def main():
     assigned.to_csv(CHARGERS_ASSIGNED, index=False)
     outside.to_csv(CHARGERS_UNASSIGNED, index=False)
 
-    counts = assigned.dropna(subset=["district_key"]).groupby("district_key").size().rename("charger_count")
+    valid = assigned.dropna(subset=["district_key"])
+    counts = valid.groupby("district_key").size().rename("charger_count")
+    port_counts = valid.groupby("district_key")["ports"].sum().rename("port_count") if "ports" in valid.columns else counts.rename("port_count")
     table = boundaries[["district", "district_key"]].merge(ev_table, on="district_key", how="left")
     table["charger_count"] = table["district_key"].map(counts).fillna(0).astype(int)
+    table["port_count"] = table["district_key"].map(port_counts).fillna(0).astype(int)
     table = rank_districts(table)
 
-    columns = ["district", "ev_total", "charger_count", "gap_score", "rank", "data_flag", "status"]
+    columns = ["district", "ev_total", "charger_count", "port_count", "gap_score", "gap_unit", "rank", "data_flag", "status"]
     if "population" in table.columns and table["population"].notna().any():
         table["evs_per_100k"] = (table["ev_total"].astype(float) / table["population"] * 100000).round(1)
         columns += ["population", "evs_per_100k"]

@@ -16,17 +16,27 @@ def main():
         print("outputs/district_gap_scores.csv not found - run  python run_all.py  first.")
         sys.exit(1)
     df = pd.read_csv(SCORES)
+    df["rank"] = df["rank"].astype("Int64")
+    if "ev_total" in df.columns:
+        df["ev_total"] = df["ev_total"].astype("Int64")
     print("=== ChargeGap Slice 0 sanity checks ===")
     print(f"Districts in results:          {len(df)}")
     print(f"Total EVs (sum of districts):  {int(df['ev_total'].sum()):,}")
     print(f"Chargers counted in districts: {int(df['charger_count'].sum())}")
+    if "port_count" in df.columns:
+        print(f"Ports counted in districts:    {int(df['port_count'].sum())}")
     if CHARGERS_RAW.exists():
-        fetched = len(pd.read_csv(CHARGERS_RAW))
+        ch_raw = pd.read_csv(CHARGERS_RAW)
+        fetched = len(ch_raw)
         outside = len(pd.read_csv(UNASSIGNED)) if UNASSIGNED.exists() else 0
         ok = "OK" if fetched == int(df["charger_count"].sum()) + outside else "MISMATCH!"
         print(f"Chargers fetched: {fetched} = in districts + {outside} outside  -> {ok}")
+        if "ports_known" in ch_raw.columns:
+            known_ports = int(ch_raw["ports_known"].astype(str).str.lower().isin(["true", "1"]).sum())
+            print(f"Chargers with known port count: {known_ports} of {fetched}")
 
-    cols = ["rank", "district", "ev_total", "charger_count", "gap_score", "data_flag"]
+    cols = ["rank", "district", "ev_total", "charger_count", "port_count", "gap_score", "gap_unit", "data_flag"]
+    cols = [c for c in cols if c in df.columns]
     ranked = df[df["rank"].notna()]
     print("\nTop 5 MOST underserved (rank 1 = worst):")
     print(ranked.sort_values("rank").head(5)[cols].to_string(index=False) if len(ranked) else "  (nothing ranked: no EV data)")
