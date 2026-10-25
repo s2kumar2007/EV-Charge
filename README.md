@@ -33,6 +33,12 @@ Every name that was not an exact match is printed and saved in `data/processed/v
 Districts with no EV count are left empty ("no EV data", not ranked). Nothing is invented unless you set `ALLOW_SYNTHETIC = True`
 in `config.py`; then invented values are flagged `synthetic`.
 
+## Synthetic test data
+The repository includes `data/samples/vahan_tn_ev_by_district_SYNTHETIC_TEST.csv`, which contains invented EV counts strictly for testing.
+- To enable it when no real VAHAN file is available, set `USE_SYNTHETIC_TEST_DATA = True` in `src/config.py`.
+- When enabled, the interactive map displays a synthetic warning and dashed district outlines, and the run prints a loud warning.
+- **Important**: This file contains invented data and must never be used in the submission.
+
 ## Gap score
 `gap_score = EVs in district / public chargers (or ports) in district` (higher = more underserved).
 The unit is controlled by `GAP_UNIT` in `src/config.py`:

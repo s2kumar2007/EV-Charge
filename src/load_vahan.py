@@ -18,6 +18,7 @@ from utils import PROCESSED, RAW, ROOT, SAMPLES, ensure_dirs
 
 RAW_VAHAN_FILE = RAW / "vahan_tn_ev_by_district.csv"
 TEMPLATE_FILE = RAW / "vahan_tn_ev_by_district_TEMPLATE.csv"
+SYNTHETIC_TEST_FILE = SAMPLES / "vahan_tn_ev_by_district_SYNTHETIC_TEST.csv"
 RESOLUTION_LOG = PROCESSED / "vahan_name_resolution.csv"
 TYPE_COLUMNS = ["two_wheeler", "three_wheeler", "four_wheeler", "bus"]
 
@@ -25,12 +26,13 @@ TYPE_COLUMNS = ["two_wheeler", "three_wheeler", "four_wheeler", "bus"]
 def get_vahan_source():
     """
     Find which VAHAN file to read:
-    1. data/raw/vahan_tn_ev_by_district.csv first
-    2. data/samples/ (config.VAHAN_SAMPLE_FILE) if the raw file is missing
-    Returns (path_to_file or None, display_string or None).
+    1. data/raw/vahan_tn_ev_by_district.csv (real file)
+    2. data/samples/vahan_tn_ev_by_district.csv (committed real file)
+    3. data/samples/vahan_tn_ev_by_district_SYNTHETIC_TEST.csv (ONLY if USE_SYNTHETIC_TEST_DATA is True)
+    Returns (path_to_file or None, display_string or None, is_synthetic_test: bool).
     """
     if RAW_VAHAN_FILE.exists():
-        return RAW_VAHAN_FILE, f"data/raw/{RAW_VAHAN_FILE.name}"
+        return RAW_VAHAN_FILE, f"data/raw/{RAW_VAHAN_FILE.name}", False
 
     sample_setting = getattr(config, "VAHAN_SAMPLE_FILE", "vahan_tn_ev_by_district.csv")
     sample_candidate = Path(sample_setting)
@@ -42,9 +44,12 @@ def get_vahan_source():
         sample_path = SAMPLES / sample_candidate.name
 
     if sample_path.exists():
-        return sample_path, f"data/samples/{sample_path.name}"
+        return sample_path, f"data/samples/{sample_path.name}", False
 
-    return None, None
+    if getattr(config, "USE_SYNTHETIC_TEST_DATA", False) and SYNTHETIC_TEST_FILE.exists():
+        return SYNTHETIC_TEST_FILE, f"data/samples/{SYNTHETIC_TEST_FILE.name}", True
+
+    return None, None, False
 
 
 def write_template():
@@ -61,10 +66,12 @@ def _numbers(series):
 
 def read_vahan_file():
     """Return (table, name_column). Empty table if the file does not exist."""
-    source_path, display_name = get_vahan_source()
+    source_path, display_name, is_synthetic_test = get_vahan_source()
     if source_path is None:
         return pd.DataFrame(columns=["district", "ev_total"]), "district"
     print(f"  using VAHAN file: {display_name}")
+    if is_synthetic_test:
+        print("  [WARNING] SYNTHETIC TEST DATA IN USE - these are not real EV counts. Do not use these results in the submission.")
     df = pd.read_csv(source_path)
     df.columns = [c.strip().lower() for c in df.columns]
     name_col = "district" if "district" in df.columns else "rto" if "rto" in df.columns else None
@@ -110,8 +117,11 @@ def load_vahan(boundaries, geocode_fn=None):
     agg = {"ev_total": "sum"}
     if "population" in used.columns:
         agg["population"] = "max"
+    if "data_flag" in used.columns:     # a file may mark its own rows as synthetic; keep that mark
+        agg["data_flag"] = lambda s: "synthetic" if (s.astype(str).str.strip().str.lower() == "synthetic").any() else "real"
     real = used.groupby("district_key", as_index=False).agg(agg)
-    real["data_flag"] = "real"
+    if "data_flag" not in real.columns:
+        real["data_flag"] = "real"
 
     keys = list(boundaries["district_key"])
     table = pd.DataFrame({"district_key": keys}).merge(real, on="district_key", how="left")
@@ -134,12 +144,13 @@ def load_vahan(boundaries, geocode_fn=None):
 def main():
     ensure_dirs()
     write_template()
-    source_path, display_name = get_vahan_source()
+    source_path, display_name, is_synthetic_test = get_vahan_source()
     if source_path is not None:
-        state = f"found ({display_name})"
+        print(f"[2/5] VAHAN: found ({display_name}).")
+        if is_synthetic_test:
+            print("  [WARNING] SYNTHETIC TEST DATA IN USE - these are not real EV counts. Do not use these results in the submission.")
     else:
-        state = f"{RAW_VAHAN_FILE.name} NOT found in data/raw/ or data/samples/ (all districts will show 'no EV data')"
-    print(f"[2/5] VAHAN: {state}.")
+        print(f"[2/5] VAHAN: {RAW_VAHAN_FILE.name} NOT found in data/raw/ or data/samples/ (all districts will show 'no EV data').")
 
 
 if __name__ == "__main__":

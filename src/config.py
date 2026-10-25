@@ -36,6 +36,8 @@ RETRY_WAIT_S = 5
 # ---- VAHAN EV data --------------------------------------------------------
 # If data/raw/vahan_tn_ev_by_district.csv is missing, load_vahan.py falls back to this sample in data/samples/
 VAHAN_SAMPLE_FILE = "vahan_tn_ev_by_district.csv"
+# Only load data/samples/vahan_tn_ev_by_district_SYNTHETIC_TEST.csv when explicitly turned on for testing
+USE_SYNTHETIC_TEST_DATA = False
 
 # ---- Scoring --------------------------------------------------------------
 # "first"    : districts with 0 chargers rank as most underserved (biggest EV count first)
