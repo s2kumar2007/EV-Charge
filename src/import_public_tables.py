@@ -102,7 +102,7 @@ def parse_ev_table(lines):
                        "data_flag": "real" if complete else "missing",
                        "extraction_status": "complete" if complete else "ambiguous PDF cells - not ranked",
                        "ev_year": config.PUBLIC_EV_SELECTED_YEAR,
-                       "ev_measure": "annual new EV registrations, not cumulative fleet",
+                       "ev_measure": config.PUBLIC_EV_MEASURE_LABEL,
                        "source_url": config.PUBLIC_EV_SOURCE_URL,
                        "source_date": config.PUBLIC_EV_SOURCE_DATE})
     return pd.DataFrame(totals), audit

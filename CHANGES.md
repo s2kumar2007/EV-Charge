@@ -126,3 +126,102 @@ outputs/feasibility.md and the two national input templates.
   verification is claimed. National missing values remain missing.
 - Changed .gitignore, src/config.py, src/map_links.py, src/make_map.py,
   tests/test_india.py, README.md, CHANGES.md and outputs/feasibility.md.
+
+## 2026-10-27 - Population compatibility, cached indicators and acceptance
+
+- Part A was stopped at its dependency blocker: original PDF exists, but
+  pdfplumber cannot be installed and pdftotext is absent. EV CSV unchanged;
+  26 complete/11 missing, with no guessed cells or unperformed checks claimed.
+- Added a source-spelling population crosswalk: 33 exact-name polygons accepted;
+  five population rows need human review. Non-exact proposals stay unverified;
+  reviewed many-to-one populations sum only when every contributor is approved
+  and present. Duplicated source rows cannot split a population.
+- Added the annual-new-registration/2022-population indicator label.
+- Added configurable state-cache -> national-cache -> live Overpass source order,
+  matching-PBF provenance checks, state/district clipping, district-local CRS
+  calculations and source/snapshot/cache columns. All 37 state districts now
+  have road and commercial observations from 2026-10-25T21:21:21 UTC.
+- Added a standalone HTML script/link asset cache, non-empty validation,
+  duplicate reuse and explicit retained failed URLs. MAP_OFFLINE_MODE=False;
+  MAP_TILES=None removes basemap tiles. Actual asset downloads remain blocked.
+- Added explicit pinned_repo/geoboundaries provider selection for both runners,
+  ADM2/ADM1 metadata/download attribution, representative-point state selection
+  and provider comparison. Default remains pinned_repo; real alternative
+  downloads/comparison remain blocked. Pinned personal-usage/no-licence risk
+  is documented. ADM1 and ADM2 licences are retained separately.
+- Added run_acceptance.py with observed counts, source dates, EV meaning/year,
+  population status, ranks, actual statistic sample sizes, map asset checks,
+  synthetic checks and concrete manual tasks. Actual result is PARTIAL.
+- Missing PySAL now leaves explicitly untested statistics while allowing maps
+  and acceptance to finish. State run: 26 basic ranks, 23 composite ranks,
+  220 raw/216 merged chargers, no synthetic data; Moran/Gi* n used = 0.
+- 75 offline tests pass; 1 real PySAL integration test is skipped. Updated
+  README/feasibility and ignored local logs/intermediate download files.
+- Commits were attempted but .git/index.lock writes are denied by this runtime.
+  No Git identity was changed and no assistant attribution was added.
+
+Changed/new repository files for this stage:
+.gitignore, requirements.txt, README.md, CHANGES.md, outputs/feasibility.md,
+data/samples/district_crosswalk.csv, run_acceptance.py, run_india.py,
+src/boundary_sources.py, src/cache_map_assets.py, src/config.py,
+src/fetch_indicators.py, src/gap_index.py, src/hotspots.py, src/india_data.py,
+src/load_boundaries.py, src/load_population.py, src/make_map.py,
+tests/test_acceptance.py, tests/test_boundary_sources.py,
+tests/test_compatibility.py, tests/test_indicator_sources.py,
+tests/test_map_assets.py, tests/test_pipeline.py, tests/test_slice1.py.
+
+## Native India Google Maps integration
+
+- Added a Maps JavaScript API national view using the existing real national
+  polygon, indicator and station outputs; 735 polygons and 575 assigned merged
+  stations in the supplied snapshot. Missing national EV/population stays missing.
+- Added district/ID search, district and station toggles, configurable indicator
+  styling, source popups, directions links and explicit API/auth failure messages.
+- Stored the user key only in ignored .env. All settings are in config.py;
+  .env.example contains a blank placeholder. No key enters tracked source,
+  documentation, generated manifests or commit messages. The rendered ignored
+  HTML uses a browser key and needs HTTP-referrer/API restrictions.
+- Integrated optional generation into run_india.py and added --google-map-only
+  to render existing national outputs without repeating extraction/providers.
+- Added fake-data/key offline tests for null preservation, ID validation,
+  safe script embedding, coordinate errors, file generation and credential logs.
+  Generated inline JavaScript passes node --check. Actual browser/API access
+  remains unverified because the in-app browser cannot reach the local preview.
+- Retried staging and commit after focused tests; .git/index.lock creation is
+  still denied. No commits were created and no Git identity was changed.
+
+Files for this Google Maps increment: .env.example, src/config.py,
+src/make_google_map.py, src/google_map_template.html, run_india.py,
+tests/test_google_map.py, tests/test_india.py, README.md, CHANGES.md,
+outputs/feasibility.md. The actual .env and generated outputs stay ignored.
+
+Google Maps final validation: 83 passed, 1 skipped (PySAL integration), Node
+syntax and offline fake-Google UI tests passed, and git diff --check passed.
+Credential scan: supplied key absent from every trackable file; .env and
+generated HTML confirmed ignored. Live Google API auth remains unverified.
+
+## Reconnect follow-through: guarded PDF recovery and national acceptance
+
+- Added complete_ev_counts.py: pdfplumber word-position/cell extraction;
+  pdftotext -layout fallback; raw coordinate/unit/backend/hash audits;
+  original-measure/category/year gates; baseline, duplicate and printed-total
+  checks; missing-cell preservation; and atomic CSV replacement after checks.
+- Added ten fake-data offline tests, including an unknown-district regression
+  that prevents inheriting the preceding district's values. The real command
+  stops safely on missing pdfplumber and Windows error 623 from pdftotext.
+- Centralised the original EV measure label in config; no EV CSV values changed.
+- Added run_acceptance.py --scope india, national provider comparison option,
+  scope-specific labels/manual commands and a browser-key non-disclosure test.
+  National demand coverage is explicitly 0/735; supply observations remain real.
+- Recorded national source candidates without promoting unverified values,
+  licensing or RTO geography. Attempts to retrieve supplied file contents and
+  all eleven map assets failed; no successful retrieval is claimed.
+- Full suite: 95 passed, 1 PySAL integration skip. Whitespace checks pass.
+  Browser validation stopped at Computer Use's URL-policy enforcement failure.
+  Git commit retry remains denied; no identity or permissions were changed.
+
+Files in this increment: src/complete_ev_counts.py,
+tests/test_complete_ev_counts.py, src/import_public_tables.py, src/config.py,
+run_acceptance.py, tests/test_acceptance.py, src/load_boundaries.py,
+data/samples/official_sources/national_source_candidates.json,
+README.md, outputs/feasibility.md and CHANGES.md.

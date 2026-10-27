@@ -1,112 +1,241 @@
-# Current data collection and feasibility - 27 October 2026
+# Current verification - 27 October 2026
 
-The code for both slices is implemented. A partial real-data run is now
-available; full live/composite/hotspot verification is still incomplete.
+Acceptance: **PARTIAL**. The state CLI completes offline using real supplied
+sources. Missing values are retained. No synthetic data are in use. Source
+completion and external validation are not claimed merely because code exists.
+This section replaces the earlier feasibility snapshot.
 
-## Data actually collected
-
-| Data | Coverage | Use in current run |
+| Check | Current observed result | Status |
 |---|---|---|
-| Official MoRTH/VAHAN district-category EV table, Lok Sabha answer 4552, published 19 March 2026 | 2025 annual NEW registrations; 37 source districts | 26 complete district totals; 11 excluded for ambiguous PDF cells |
-| Tamil Nadu DES Statistical Handbook 2022-23, table 2.1 | 38 district mid-year 2022 population estimates | Candidate file only; geography compatibility unverified |
-| Pinned third-party district polygons | 37 polygons from pre-existing cache | Used with district-coverage and rights caveats |
-| OSM charger observations | 220 raw records from pre-existing cache; no verified retrieval date | Used, explicitly labelled cached rather than refreshed |
-| OSM roads/commercial nodes | Live download not available | Missing; never replaced by zeros |
+| State boundaries | 37 polygons; pinned_repo remains the default | PASS loading; rights unresolved |
+| Chargers | 220 raw, 216 deduplicated; 57 raw and 56 merged records have known ports | PASS internal counts; manual merge validation pending |
+| Charger assignment | Raw: 74 inside + 146 outside = 220; merged: 73 inside + 143 outside = 216 | PASS |
+| EV input | 26 complete, 11 missing; 2025 annual NEW registrations, all original vehicle categories, not cumulative fleet | PARTIAL |
+| Basic district ranks | 26 | PARTIAL coverage |
+| Population | 38 official 2022 estimate rows; 33 polygons accepted by exact-name crosswalk; 4 polygons have no accepted population | PARTIAL |
+| Roads | 37 observed densities; national_cache, snapshot 2026-10-25T21:21:21+00:00 | PASS source/geometry checks |
+| Commercial places | 37 observed densities; same national_cache and snapshot | PASS source/geometry checks |
+| Composite index | 23 ranked, 14 missing indicators | PARTIAL |
+| Moran I / Gi* | 23 eligible; 0 actually used; statistics remain missing because PySAL is absent | PARTIAL, small-sample warning |
+| Map | outputs/tn_gap_map.html generated; 11 external JS/CSS URLs; offline assets: no | PARTIAL; browser visual check pending |
+| Synthetic data | NO; both synthetic switches disabled | PASS |
 
-The 26 complete EV totals sum to **141,606** annual registrations. This is a
-partial-district sum, **not a statewide total**, active vehicle fleet, or
-cumulative registrations. The named source contains all 37 rows, but some
-numeric cells lost separators in PDF text extraction. The importer records
-raw cells and refuses affected district totals. No synthetic EV values are used.
+## A: original PDF extraction is blocked
 
-EV source:
-https://sansad.in/getFile/loksabhaquestions/annex/187/AU4552_wCyeso.pdf?source=pqals
+`data/raw/AU4552_original.pdf` exists (687838 bytes). The active Python has no
+pdfplumber; both package installation attempts failed to find an available
+distribution, and the bundled pdftotext fails to launch with Windows DLL relocation error 623. No other PDF parser was substituted.
+The existing EV CSV is unchanged relative to Git HEAD after newline normalisation (all rows and values match); the 26
+complete totals still sum to 141606. That partial sum is not a state total.
 
-Population candidate:
-https://des.tn.gov.in/sites/default/files/2025-07/2.VITAL%20STATISTICS.pdf
+No word-coordinate audit or PDF total cross-check has been completed. Do not
+claim any of the 11 ambiguous districts were recovered. By hand in a connected
+terminal run `python -m pip install pdfplumber`, then resume Part A. Extraction
+must retain every cell/coordinate, preserve the original year/categories and
+annual-new-registration measure, compare every existing complete district and
+stop on disagreement before replacing any CSV. Printed row/state totals must
+also be checked wherever present. The PDF itself does not need downloading again.
 
-Source text was collected through web retrieval and cached locally. Original
-PDF bytes and readable page-image bytes were not available through this path.
-The text snapshots are committed under data/samples/official_sources and a
-parser rebuilds the CSVs; no district values are typed into calculation logic.
-Government tables are citable factual sources; an explicit redistribution
-licence has not been established. They are not labelled CC-BY without evidence.
+## B: population compatibility
 
-The 2022 population values are official published estimates, not generated
-synthetic figures. They stay out of the index until district geography is
-checked. Names alone cannot prove matching boundaries. Source names and
-spelling are preserved in the candidate file.
+The committed `data/samples/district_crosswalk.csv` preserves source spelling.
+Only normalised exact names have one_to_one. Five rows need human review:
 
-## Verification
+| Population source row | Resolver proposal | Current state |
+|---|---|---|
+| Sivagangai | Sivaganga | fuzzy; suggestion, not verified |
+| Thoothukudi | Thoothukkudi | fuzzy; suggestion, not verified |
+| Kanniyakumari | Kanyakumari | fuzzy; suggestion, not verified |
+| Tiurupathur | Tirupathur | fuzzy; suggestion, not verified |
+| Mayiladuthurai | No resolved polygon | geocoding unavailable offline |
 
-- Python 3.11.9 on Windows; source compilation succeeds.
-- Latest offline suite: **41 passed, 1 skipped**. The skipped case is the true
-  PySAL Gi* integration test; libpysal/esda remain unavailable because direct
-  package downloads fail DNS. It has not been counted as a pass.
-- Both-slice pipeline regenerates the partial historical gap map, source
-  audit and CSVs. Twenty-six basic ranks are based on the collected EV data;
-  eleven remain missing. Composite indicators remain incomplete/unranked.
-- A real-data source-date timestamp exposed a Folium serialization issue; it
-  was fixed and a metadata-bearing map regression test now passes.
-- Raw charger reconciliation: 220 = 74 inside + 146 outside.
-- Deduplicated reconciliation: 216 = 73 inside + 143 outside at 40 m.
-- 57/220 raw records have known ports. Radius sensitivity and human validation
-  samples are generated; no claim of externally validated precision is made.
-- Folium HTML is generated and its content/layer contracts tested. Eleven
-  JS/CSS libraries are not cached; internet is needed to display this preview.
-  Browser visual rendering has not been verified. After a connected run the
-  vector map libraries can be cached, while basemap tiles remain online.
+Polygons without accepted population: Kanyakumari, Sivaganga, Thoothukkudi,
+Tirupathur. Four fuzzy destinations are proposals, not proof of compatibility.
+Geocode requests could not run; no geocode suggestions are claimed.
 
-## Concrete remaining limits
+A non-exact row can be accepted only as many_to_one with verified=yes, the
+exact polygon label and documentary evidence. All contributors to a shared
+polygon must be approved; values are summed only when every required value
+is present. One source row cannot be duplicated or split. Source-name equality
+still cannot prove unchanged historical boundaries. The indicator label is
+"annual new EV registrations per 100,000 people (2022 population estimate)".
+A compatible manual population input retains its previous precedence.
 
-Direct Python requests to official PDF and package hosts still fail DNS.
-Web retrieval successfully collected official table text, but its Overpass
-request was inaccessible. Consequently current charger refresh, road geometry,
-commercial nodes, package installation and full browser inspection are not
-complete. No fabricated substitutes or replacement spatial statistics were used.
+## C: national OSM cache reused for the state
 
-The default collected EV input is historical annual adoption, not live fleet
-pressure. For a full result, resolve ambiguous source cells from a readable
-original PDF, obtain compatible population geography, obtain OSM road/POI
-responses, install the PySAL dependencies and execute its integration test.
-Boundary redistribution rights and the human merge-validation sample also
-remain to be checked. No paid API is required for the implemented default route.
+Source priority is configurable: matching state Overpass cache, matching
+national extraction cache, live Overpass. Cache identity checks compare the
+PBF SHA-256 and reader version. Without the original PBF, one uniquely
+identified cache can be read; a matching manifest supplies its date, otherwise
+the snapshot date stays unknown and acceptance is partial. Both indicators record source, snapshot date
+and cache filename in data/processed/district_osm_indicators.csv and the index.
+Roads are clipped at state and district borders and measured in each district's
+automatically chosen local metric CRS. Nodes are assigned once on shared borders.
+A complete empty observation can be zero; missing/failed/partial data are not
+zero-filled. Offline tests check cross-border road splitting and missing coverage.
 
-## National build verification (27 October 2026)
+The national cache was previously extracted from the supplied India PBF and
+contains 246786 trunk/primary roads and 179302 commercial nodes. These are OSM
+features, not a complete traffic or business census. State charger records
+remain the legacy cached observations with unknown retrieval date; roads'
+2026 snapshot date is not assigned to those charger records.
 
-The India binary extraction completed from the supplied snapshot dated
-2026-10-25T21:21:21 UTC: 610 raw charger records, 576 merged stations,
-246786 main-road ways and 179302 commercial nodes. These are OSM observations,
-not a complete inventory of working public chargers. Ports are known for 151
-raw records; other records retain the flagged one-port assumption.
+## D: offline map resources
 
-The national test suite reports 54 passed and 1 skipped. The skipped PySAL
-integration test still needs libpysal and esda; it is not counted as verified.
-Live download connectivity timed out. A safe current-extract refresh command
-is implemented and tested with fake network responses, but a successful live
-refresh has not been verified in this environment.
+src/cache_map_assets.py reads actual script/link attributes, deduplicates URLs,
+checks non-empty cache/destination files and retains original URLs on failure.
+The downloader uses shared retry settings; fake byte responses test success,
+reuse, empty responses and failures without internet. MAP_OFFLINE_MODE defaults
+to False; cache_map_assets.py can also process an existing HTML file directly.
+Tiles stay online; MAP_TILES=None removes the basemap. CSS fonts/images referenced
+inside those files are outside the script/link cache scope.
 
-National EV and compatible population inputs are absent. National gap and
-composite ranks therefore remain empty; the supply map must not be described
-as a measured demand-gap ranking. State outputs remain unchanged. National
-count reconciliation and source hashes are recorded in outputs/india/run_manifest.json
-when the full run completes. The map explicitly warns about missing inputs
-and uncached display libraries where relevant.
+By hand with internet run:
+`python src/cache_map_assets.py outputs/tn_gap_map.html`.
+All 11 library URLs remain external; actual successful downloads and browser
+visual rendering have not been verified here.
 
-The full national CLI run completed successfully. All 735 road/POI district
-calculations finished. Counts reconcile: raw 610 = 609 inside + 1 outside;
-merged 576 = 575 inside + 1 outside. The national HTML map and run manifest
-were generated. Eleven JS/CSS dependencies are uncached, so the map currently
-requires internet to render. Browser visual verification remains incomplete;
-HTML structure and inline JavaScript syntax were checked separately.
+## E: boundary rights and providers
 
-## External verification retry and Google Maps links
+The supplied pinned-repository README describes collection "for personal usage"
+and names no data licence. Redistribution rights remain unresolved. Direct
+re-fetching of the pinned README failed here; this warning is not a newly
+verified legal conclusion. Ask the publisher for permission or choose a provider
+whose terms and accuracy you can satisfy.
 
-55 tests pass, with 1 PySAL integration skip. The regular PySAL installation
-was denied by Windows permissions; repository-local installation could not
-fetch usable packages. Live extract, map-library and official Census download
-requests timed out. These external checks remain incomplete. A national
-population source was identified, but its 2011 geography still requires a
-crosswalk to the supplied newer polygons. National EV totals remain unavailable.
-Google Maps links were implemented using existing charger coordinates, without
-paid APIs, and the national map was regenerated with the missing-assets banner.
+BOUNDARY_PROVIDER defaults to pinned_repo and now governs both runners.
+The geoBoundaries path preserves ADM2/ADM1 metadata, exact gjDownloadURL files,
+SHA-256 receipts and attribution under data/raw. State membership uses exact
+ADM1 state selection and district representative points, not a missing state
+attribute or hand-typed district list. The comparison command prints counts
+and source names present only in one provider without changing the default.
+
+Metadata could be retrieved through web lookup: ADM2 represents 2021 and names
+ODbL 1.0; ADM1 represents 2011 and names CC BY 2.5 India. Preserve both releases'
+terms and year differences. Actual Python downloads fail connection attempts.
+`python src/load_boundaries.py --compare` could not load the alternative; no
+state comparison count or successful download is claimed. With internet run
+that command and review its printed name/count comparison before switching.
+The supplied root ADM2 snapshot is not silently asserted to match current
+metadata. A fresh full national run was not performed: the explicit default
+pinned provider requires its repository listing/all state files to be cached.
+Previously generated national outputs remain separate historical outputs.
+
+Metadata:
+https://www.geoboundaries.org/api/current/gbOpen/IND/ADM2/
+https://www.geoboundaries.org/api/current/gbOpen/IND/ADM1/
+
+## F: acceptance and remaining manual checks
+
+Run `python run_acceptance.py`. It prints evidence-backed PASS/PARTIAL/FAIL
+for the requested metrics, records actual Moran/Gi* sample sizes, rechecks map
+files/URLs and writes outputs/acceptance_report.json. Unknown evidence remains
+PARTIAL. Synthetic inputs and impossible raw/merged counts fail acceptance.
+Missing PySAL dependencies now leave untested outputs and let map/report
+generation finish, without producing substitute statistics.
+
+Latest offline suite: **95 passed, 1 skipped**. The single skip is the real PySAL Gi*
+integration test. Added fake-data tests cover crosswalk proposals/aggregation,
+source priority/date/clipping, asset caching, provider metadata/selection and
+acceptance statuses; the existing tests also pass. The state CLI completed
+with no synthetic values. No browser-rendering claim is made.
+
+Remaining manual actions:
+
+1. Install pdfplumber in a connected terminal and resume the audited PDF extraction.
+2. Verify the five population crosswalk rows above; do not approve based on spelling alone.
+3. Install `python -m pip install libpysal esda`, rerun the state CLI and tests.
+4. Cache map assets using the command above; inspect the map in a browser.
+5. Run the provider comparison online, review licences/geography and choose explicitly.
+6. Review charger merge samples and provisional AHP judgments.
+7. Commit the reviewed changes in your terminal. Git staging/commit was attempted
+   after the first tested stage but this runtime denies .git/index.lock creation.
+   Existing user Git identity was not changed, and no commits were created.
+   After review: `git add .` then
+   `git commit -m "feat: add population compatibility and source acceptance checks"`.
+
+Runtime caches, maps, logs, temporary downloads and virtual environments are
+ignored. Samples, crosswalk, source code, tests and this report remain trackable.
+
+## Native Google Maps national view
+
+Added outputs/india/india_google_map.html using existing processed national
+outputs: 735 polygons, 576 merged observations, 575 inside a loaded district
+and displayed. The unassigned observation remains excluded by default and
+is retained in the audit. This is the supplied boundary snapshot, not complete
+current administrative or charger coverage. No missing national demand values
+were populated. Snapshot timestamp is carried from the existing national manifest.
+
+The browser key is stored in ignored .env; it is never printed by the generator
+or written into tracked files/manifests. The generated ignored HTML necessarily
+loads Google with a browser key; restrict its API and HTTP referrers and rotate
+the key shared in chat. Its project's billing/API activation cannot be inferred.
+
+Generate without recalculation: python run_india.py --google-map-only.
+Serve with python -m http.server 8000 --bind 127.0.0.1 --directory outputs/india,
+then open http://127.0.0.1:8000/india_google_map.html. The in-app browser cannot
+reach the preview server; actual Google Maps authorisation and visual rendering
+remain unverified. Offline fake-data/key renderer tests and Node syntax checks
+pass. The UI explains internet/billing/API/referrer failures; it does not claim
+successful authentication based on the shape of the supplied key.
+
+A commit retry after the focused passing tests again failed on .git/index.lock
+permission. The key remains ignored and existing Git identity is unchanged.
+
+Final full suite: 83 passed, 1 skipped in 9.12s. The eight Google Maps tests
+include a fake Google API execution test for startup, missing layer values,
+duplicate district-name search, charger toggles/popups and auth failure.
+Generated JavaScript passes node --check; git diff --check passes.
+A scan of every tracked/unignored file found no actual supplied key. Both
+.env and outputs/india/india_google_map.html are confirmed ignored.
+
+## Continued completion attempt after reconnect
+
+Implemented src/complete_ev_counts.py with ten offline tests using fake
+word coordinates and table cells. It tries pdfplumber word/cell geometry
+first, falls back only to pdftotext -layout, records coordinate units and raw
+cells, preserves the exact existing year/measure/category definitions and
+stops before replacing CSV on disagreement. Tests cover existing-value and
+printed-total checks, ambiguous separators, absent categories and unknown
+district labels. The existing web-table importer now shares the measure label
+from config. Real execution remains blocked: pip reports getaddrinfo failure;
+pdftotext is present in Git's installation but raises Windows error 623.
+No recovered district values or coordinate-audit completion is claimed.
+
+Added national acceptance scope: python run_acceptance.py --scope india.
+Actual saved-run observations: 735 polygons; 610 raw/576 merged records;
+known ports for 151 raw/146 merged records; 735 road and commercial densities
+using the 2026-10-25T21:21:21 UTC snapshot. National EV/population coverage is
+0/735, composite ranked=0; Moran/Gi* remain untested. Google view: 735 polygons
+and 575 assigned stations; browser authorisation unverified. The older boundary
+manifest lacks a provider field and is explicitly partial. No state population
+year, PDF task or map-file path is incorrectly reused in national acceptance.
+
+Retried every external Folium script/link URL with a bounded connection test:
+all eleven failed; original URLs remain intact and failures are recorded in
+the asset receipt. No successful offline map-library cache is claimed.
+Computer Use stopped itself because it could not determine the current Windows
+browser URL reliably, so no further browser automation was attempted this turn.
+
+The national source-candidate file records the official public VAHAN report,
+a third-party 2024 district/RTO layer and the three supplied filenames. These
+are not imported counts or verified geographic crosswalks. Library content
+retrieval/download failed; searching this project and its parent found no
+local copies of the supplied workbooks/CSV. Do not infer district coverage or
+measure definitions from filenames. Copy local originals into
+ data/raw/supplied_user_files/ for inspection if available.
+
+Final checks for this increment: 95 passed, 1 skipped (real PySAL Gi*).
+Git diff whitespace checks pass. Existing EV rows and totals remain unchanged.
+Commit retry still fails because .git/index.lock writes are denied; no commits,
+permission changes or identity changes were made. Current source changes are
+listed in outputs/changed_files.txt for review.
+
+Manual actions that remain necessary:
+- Install a working pdfplumber/pdftotext and run python src/complete_ev_counts.py.
+- Provide/read the supplied source files locally; obtain compatible national
+  district EV/population inputs before claiming national demand ranks.
+- Review five population crosswalk rows and charger merge/AHP evidence.
+- Enable working network access for PySAL, boundary and map-asset downloads.
+- Inspect Google Maps in your browser with API/billing/referrer settings enabled.
+- Commit in your own terminal or make .git writable in the workspace profile.

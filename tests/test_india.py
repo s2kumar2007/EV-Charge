@@ -124,6 +124,7 @@ def test_national_roads_and_empty_counts():
     assert result.road_km_per_km2.gt(0).all() and result.commercial_count.eq(0).all()
 
 def test_national_runner_keeps_state_outputs(tmp_path,monkeypatch):
+    monkeypatch.setattr(config, "GOOGLE_MAPS_ENABLED", False)
     import sys
     from pathlib import Path
     sys.path.insert(0,str(Path(__file__).resolve().parents[1]))

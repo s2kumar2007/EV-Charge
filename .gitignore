@@ -19,3 +19,11 @@ outputs/*
 *.osm.pbf
 geoBoundaries-IND-ADM2.geojson
 .deps_wheels/
+
+# Local build/download intermediates and diagnostic logs.
+*.part
+*.log
+.coverage
+htmlcov/
+.ruff_cache/
+tmp/

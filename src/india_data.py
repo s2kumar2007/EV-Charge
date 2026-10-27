@@ -10,7 +10,10 @@ from build_scores import assign_chargers_to_districts, count_units, rank_distric
 
 
 def load_boundaries(path=None):
-    path = ROOT / config.INDIA_BOUNDARY_FILE if path is None else Path(path)
+    if path is None:
+        from boundary_sources import load_provider
+        return load_provider(national=True, force=config.REFRESH_DOWNLOADS and not config.OFFLINE)
+    path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"National boundary file missing: {path}")
     frame = gpd.read_file(path)

@@ -66,6 +66,7 @@ def test_synthetic_file_forces_flag(monkeypatch):
 
 
 def test_population_download_not_used_before_review(monkeypatch, tmp_path):
+    monkeypatch.setattr(config, "POPULATION_USE_CANDIDATE_CROSSWALK", False)
     boundaries = gpd.GeoDataFrame({"district": ["Alpha"], "district_key": ["alpha"]}, geometry=[box(0, 0, 1, 1)], crs=config.WGS84)
     fake = pd.DataFrame({"state_name": [config.STATE_NAME], "district_name": ["Alpha"], "pop_total": [1234]})
     monkeypatch.setattr(load_population, "RAW", tmp_path)

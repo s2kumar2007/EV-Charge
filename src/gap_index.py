@@ -133,12 +133,16 @@ def assemble_indicators(scores, population, osm):
         table["population"] = supplied.combine_first(table.population)
     table["ev_pressure"] = table.gap_score
     table["evs_per_100k"] = table.ev_total / table.population.where(table.population > 0) * config.PER_100K
+    candidate = "population_year" in population and population.population_year.dropna().eq(config.PUBLIC_POPULATION_YEAR).all() and population.population_source.astype(str).str.contains("crosswalk").any()
+    table["population_indicator_label"] = config.POPULATION_INDICATOR_LABEL if candidate else config.POPULATION_GENERIC_INDICATOR_LABEL
     return table.merge(osm, on="district_key", how="left", validate="one_to_one")
 
 
 def main(scores, population, osm):
     ensure_dirs()
     result, metadata = compute_index(assemble_indicators(scores, population, osm))
+    metadata["indicator_sources"] = dict(metadata["indicator_sources"])
+    metadata["indicator_sources"]["evs_per_100k"] = result.population_indicator_label.iloc[0] if len(result) else config.POPULATION_GENERIC_INDICATOR_LABEL
     result.to_csv(OUTPUTS / "district_gap_index.csv", index=False)
     result[["district", "district_key", "min_rank", "max_rank", "median_rank", "top_k_share", "index_status"]].to_csv(OUTPUTS / "gap_index_sensitivity.csv", index=False)
     save_json(OUTPUTS / "gap_index_methods.json", metadata)

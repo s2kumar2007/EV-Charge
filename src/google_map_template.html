@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChargeGap India | Google Maps</title>
+<style>
+html,body{height:100%;margin:0;font:15px system-ui,sans-serif;color:#18312e;background:#f5faf8}*{box-sizing:border-box}
+header{height:76px;display:flex;align-items:center;gap:20px;padding:12px 24px;border-bottom:1px solid #dce7e2;background:white}h1{font-size:22px;margin:0}header p{font-size:12px;margin:3px 0;color:#55736c}.badge{margin-left:auto;background:#e5f4ee;border-radius:20px;padding:8px 14px;font-size:12px}
+main{display:grid;grid-template-columns:310px 1fr;height:calc(100% - 76px)}aside{overflow:auto;padding:20px;background:white;border-right:1px solid #dce7e2}label{display:block;margin:18px 0 7px;font-weight:600}select,input[type=search]{width:100%;padding:10px;border:1px solid #bdcfc7;border-radius:6px;background:white;font:inherit}button{padding:9px 12px;border:0;border-radius:6px;background:#17694f;color:white;cursor:pointer;margin:10px 0}button:disabled{opacity:.5;cursor:wait}.toggle{font-weight:400;font-size:14px}.note{font-size:12px;line-height:1.6;color:#55736c}.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}.stat{background:#f1f7f4;padding:12px;border-radius:8px}.stat strong{font-size:24px;display:block}.stat span{font-size:12px}.legend{font-size:12px;line-height:1.6;padding:12px;background:#f5f8f7;border-radius:6px}#map{height:100%;min-height:300px}#status{padding:12px;background:#fff5d8;border-radius:6px;font-size:13px;line-height:1.5}#selection{font-size:13px;line-height:1.6;overflow-wrap:anywhere}.popup{max-width:330px;font:13px system-ui;line-height:1.7}.popup h3{margin:0 0 8px}.popup a{color:#17694f}
+@media(max-width:720px){header{height:90px;padding:12px}header .badge{display:none}main{height:calc(100% - 90px);grid-template-columns:1fr;grid-template-rows:250px 1fr}aside{padding:12px;border:0;overflow:auto}.stats{margin:8px 0}.stat{padding:6px}.stat strong{font-size:18px}label{margin-top:8px}#map{grid-row:2}}
+</style>
+</head>
+<body>
+<header><div><h1>ChargeGap India</h1><p>District coverage and charging infrastructure</p></div><span class="badge">Google Maps · National OSM snapshot</span></header>
+<main><aside>
+<div id="status" role="status" aria-live="polite">Loading Google Maps. Internet and an authorised Maps JavaScript API key are required.</div>
+<div class="stats"><div class="stat"><strong id="district-count">—</strong><span>district polygons</span></div><div class="stat"><strong id="charger-count">—</strong><span>mapped stations</span></div></div>
+<label for="layer">District indicator</label><select id="layer" disabled></select>
+<label for="district-search">Find a district</label><input id="district-search" type="search" placeholder="District name or dataset ID" list="district-list" disabled><datalist id="district-list"></datalist>
+<button id="find" disabled>Find district</button> <button id="reset" disabled>View all India</button>
+<label class="toggle"><input id="district-toggle" type="checkbox" checked> Show district polygons</label>
+<label class="toggle"><input id="charger-toggle" type="checkbox" checked> Show mapped chargers</label>
+<div id="legend" class="legend"></div><div id="selection" aria-live="polite"></div><p id="source-note" class="note"></p>
+</aside><div id="map" aria-label="India charging infrastructure map"></div></main>
+<script id="chargegap-data" type="application/json">__CHARGEGAP_DATA__</script>
+<script id="chargegap-options" type="application/json">__CHARGEGAP_OPTIONS__</script>
+<script>
+"use strict";
+const data = JSON.parse(document.getElementById('chargegap-data').textContent);
+const settings = JSON.parse(document.getElementById('chargegap-options').textContent);
+const statusNode = document.getElementById('status');
+const showError = () => {statusNode.textContent = 'Google Maps could not load or authorise this key. Check internet, enable Maps JavaScript API and billing, and allow this website in the key HTTP referrer restrictions. The existing Folium map is also available.';};
+window.gm_authFailure = showError;
+window.chargegapMapLoadError = showError;
+let mapReady = false;
+setTimeout(() => {if (!mapReady) showError();}, settings.loadTimeoutMs);
+document.getElementById('district-count').textContent = data.summary.districts;
+document.getElementById('charger-count').textContent = data.summary.mapped_chargers;
+document.getElementById('source-note').textContent = settings.note + ' OSM snapshot UTC: ' + (data.summary.snapshot_utc || 'unknown') + '. EV counts available for ' + data.summary.districts_with_ev + ' districts.';
+const isNumber = value => typeof value === 'number' && Number.isFinite(value);
+const display = value => value === null || value === undefined || value === '' ? 'No data' : typeof value === 'number' ? value.toLocaleString(undefined,{maximumFractionDigits:4}) : String(value);
+function popupContent(feature, fields, title) {
+  const root = document.createElement('div'); root.className = 'popup';
+  const heading = document.createElement('h3'); heading.textContent = title; root.appendChild(heading);
+  for (const field of fields) {
+    const row = document.createElement('div');
+    row.textContent = field.replaceAll('_',' ') + ': ' + display(feature.getProperty(field));
+    root.appendChild(row);
+  }
+  return root;
+}
+function googleLink(base, lat, lon, directions) {
+  const url = new URL(base);
+  url.searchParams.set('api',settings.urlVersion);
+  url.searchParams.set(directions ? 'destination' : 'query',lat + ',' + lon);
+  if (directions) url.searchParams.set('travelmode',settings.travelMode);
+  const anchor = document.createElement('a'); anchor.href = url.toString();
+  anchor.target = '_blank'; anchor.rel = 'noopener noreferrer'; anchor.textContent = directions ? 'Directions' : 'Open in Google Maps';
+  return anchor;
+}
+window.initChargeGapGoogleMap = function () {
+ try {
+  const [west,south,east,north] = data.bounds;
+  const map = new google.maps.Map(document.getElementById('map'), {
+    center:{lat:(south+north)/2,lng:(west+east)/2},zoom:settings.initialZoom,mapTypeId:settings.mapType,mapTypeControl:true,streetViewControl:false
+  });
+  const allBounds = new google.maps.LatLngBounds({lat:south,lng:west},{lat:north,lng:east});
+  map.fitBounds(allBounds);
+  const districts = new google.maps.Data({map}); districts.addGeoJson(data.districts);
+  const chargers = new google.maps.Data({map}); chargers.addGeoJson(data.chargers);
+  chargers.setStyle({icon:{path:google.maps.SymbolPath.CIRCLE,scale:settings.markerRadius,fillColor:settings.markerColour,fillOpacity:1,strokeColor:'#ffffff',strokeWeight:1},zIndex:2});
+  const popup = new google.maps.InfoWindow();
+  const layerSelect = document.getElementById('layer');
+  for (const [value,label] of Object.entries(settings.layers)) {
+    const option=document.createElement('option');option.value=value;option.textContent=label;layerSelect.appendChild(option);
+  }
+  layerSelect.value=settings.defaultLayer;
+  function updateLayer() {
+    const field=layerSelect.value;
+    const values=data.districts.features.map(f=>f.properties[field]).filter(isNumber);
+    const low=values.length ? Math.min(...values) : null;
+    const high=values.length ? Math.max(...values) : null;
+    districts.setStyle(feature=>{
+      const value=feature.getProperty(field);
+      let colour=settings.missingColour;
+      if (isNumber(value)) {
+        const fraction=high>low ? (value-low)/(high-low) : 0;
+        const index=Math.min(settings.palette.length-1,Math.floor(fraction*settings.palette.length));
+        colour=settings.palette[index];
+      }
+      return {fillColor:colour,fillOpacity:settings.polygonOpacity,strokeColor:settings.outlineColour,strokeWeight:settings.outlineWeight,zIndex:1};
+    });
+    document.getElementById('legend').textContent=values.length ? settings.layers[field]+': '+display(low)+' to '+display(high)+'. Grey: no data. '+values.length+' observed districts.' : 'No data for this indicator. Districts remain unranked; no values have been filled.';
+  }
+  updateLayer();layerSelect.addEventListener('change',updateLayer);
+  const directory=[];
+  districts.forEach(feature=>{
+    const name=String(feature.getProperty('district'));
+    const key=String(feature.getProperty('district_key'));
+    const option=document.createElement('option');option.value=name+' ['+key+']';
+    document.getElementById('district-list').appendChild(option);directory.push({name,key,feature,label:option.value});
+  });
+  function showDistrict(feature, position) {
+    const fields=[...new Set([...settings.popupFields,layerSelect.value])];
+    popup.setContent(popupContent(feature,fields,String(feature.getProperty('district'))));
+    if(position) popup.setPosition(position);
+    else {const bounds=new google.maps.LatLngBounds();feature.getGeometry().forEachLatLng(p=>bounds.extend(p));popup.setPosition(bounds.getCenter());}
+    popup.open(map);
+    document.getElementById('selection').textContent=String(feature.getProperty('district'))+' · '+settings.layers[layerSelect.value]+': '+display(feature.getProperty(layerSelect.value));
+  }
+  districts.addListener('click',event=>showDistrict(event.feature,event.latLng));
+  chargers.addListener('click',event=>{
+    const content=popupContent(event.feature,settings.chargerFields,event.feature.getProperty('name') || 'Mapped charger');
+    const position=event.feature.getGeometry().get();
+    content.appendChild(googleLink(settings.searchUrl,position.lat(),position.lng(),false));
+    content.appendChild(document.createTextNode(' · '));content.appendChild(googleLink(settings.directionsUrl,position.lat(),position.lng(),true));
+    popup.setContent(content);popup.setPosition(position);popup.open(map);
+  });
+  function findDistrict() {
+    const query=document.getElementById('district-search').value.trim().toLocaleLowerCase();
+    if(!query)return;
+    const exact=directory.filter(item=>[item.name,item.key,item.label].some(value=>value.toLocaleLowerCase()===query));
+    const matches=exact.length ? exact : directory.filter(item=>item.name.toLocaleLowerCase().includes(query));
+    if(matches.length!==1){document.getElementById('selection').textContent=matches.length ? 'Several districts match. Choose a full name and dataset ID from the list.' : 'No matching district in this boundary snapshot.';return;}
+    const feature=matches[0].feature;const bounds=new google.maps.LatLngBounds();feature.getGeometry().forEachLatLng(p=>bounds.extend(p));map.fitBounds(bounds);showDistrict(feature);
+  }
+  document.getElementById('find').addEventListener('click',findDistrict);
+  document.getElementById('district-search').addEventListener('keydown',event=>{if(event.key==='Enter')findDistrict();});
+  document.getElementById('reset').addEventListener('click',()=>{map.fitBounds(allBounds);popup.close();});
+  document.getElementById('district-toggle').addEventListener('change',event=>districts.setMap(event.target.checked?map:null));
+  document.getElementById('charger-toggle').addEventListener('change',event=>chargers.setMap(event.target.checked?map:null));
+  for(const id of ['layer','district-search','find','reset'])document.getElementById(id).disabled=false;
+  mapReady=true;statusNode.textContent='National snapshot loaded. Select a district or charger for details.';
+ } catch(error) {showError();}
+};
+</script>
+<script async src="__CHARGEGAP_API_URL__" onerror="chargegapMapLoadError()"></script>
+</body></html>

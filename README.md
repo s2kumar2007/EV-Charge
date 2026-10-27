@@ -2,9 +2,20 @@
 
 Techfest 2026-27, IIT Bombay: EV infrastructure mapping for India, with the original state pipeline preserved.
 
-National entry point: `python run_india.py --offline` (supplied data) or
-`python run_india.py --download-latest` (current free OSM snapshot).
-Open `outputs/india/india_gap_map.html`. See the India-wide build section below.
+State entry point: `python run_all.py --offline`. Review the current result with
+`python run_acceptance.py` and open `outputs/tn_gap_map.html`.
+National entry point: `python run_india.py --offline`, after caching the chosen
+boundary provider. `BOUNDARY_PROVIDER="pinned_repo"` is the explicit default
+for both runners. To use the supplied geoBoundaries provider nationally, set
+`BOUNDARY_PROVIDER="geoboundaries"` and first cache its metadata/downloads online;
+the old root GeoJSON is not silently treated as the current release.
+
+Current verification: **95 passed, 1 skipped**. State run: **37 polygons,
+220 raw chargers, 216 merged stations, 26 basic ranks, 33 accepted populations,
+37 road/commercial observations, 23 composite ranks**. No synthetic data.
+Acceptance is **PARTIAL**: PDF extraction, PySAL, offline map downloads and
+cross-provider comparison remain externally blocked. See `outputs/feasibility.md`.
+
 Python 3.10+. This is a map and an auditable district comparison, with no
 forecast, optimiser or dashboard. All editable source URLs, state settings,
 thresholds, colours, weighting judgments and seeds are in `src/config.py`.
@@ -42,48 +53,61 @@ and named. A required step failure exits with status 1 and its step label.
 Unavailable optional indicators remain missing with a printed warning. No
 substitute counts or substitute hotspot statistics are invented.
 
-The Python pipeline can run offline after caching its required inputs. Map JS
-and CSS are downloaded into `data/raw/map_assets/` and copied to
-`outputs/assets/`; keep that directory beside the HTML when sharing the map.
-After those libraries are cached, district vectors and charger circles work
-without internet. Basemap tiles, fonts and optional CSS images may still need
-internet; the project does not bulk-download OSM tiles. If JS/CSS downloads
-failed, the map displays an explicit internet-required banner.
+The Python pipeline runs offline from cached inputs. `MAP_OFFLINE_MODE=False`
+by default; set it to `True` to cache external script/link resources next to the
+map, or run `python src/cache_map_assets.py outputs/tn_gap_map.html` online.
+Each URL is downloaded once with retries, checked for non-empty bytes and
+rewritten to a relative `assets/` path only on success. Failed URLs stay online
+and are printed. Keep `outputs/assets/` beside the HTML. The asset receipt
+records remaining external URLs; acceptance rechecks the actual HTML and files.
+Tiles remain online; `MAP_TILES=None` removes the basemap. CSS fonts/images
+can still require internet; this feature caches external script/link files,
+not every resource referenced within CSS. Browser visual verification is pending.
 
 ## What you must supply or review by hand
 
-1. The repository now includes collected official **2025 annual EV
-   registrations** for 37 source districts: 26 complete totals and 11 left
-   empty because the PDF extraction has ambiguous count separators. No manual
-   export is needed to run that partial historical snapshot. For current or
-   cumulative registrations, supply `data/raw/vahan_tn_ev_by_district.csv` and
-   record export date, vehicle/fuel filters and time window. A stable public unauthenticated VAHAN API is
-   not assumed, and this project does not bypass login or CAPTCHA. Registration
-   totals do not measure road traffic, usage, or the active vehicle fleet.
-2. Check `data/processed/vahan_name_resolution.csv`, especially fuzzy/geocoded
-   matches and unresolved names. RTO totals describe the office's registrations;
-   geocoding its office is only a proxy for the relevant district.
-3. Supply compatible population in the VAHAN column or in
-   `data/raw/population.csv` (`district,population`). Record year, source and
-   licence. Alternatively verify that the downloaded 2011 census totals match
-   the polygons, then set `POPULATION_BOUNDARIES_VERIFIED = True`. Matching a
-   name does **not** prove that its boundaries have not changed.
-4. Review boundary accuracy, current district coverage and redistribution
-   permissions; the pinned compilation is not an official boundary authority.
-5. Fill `checked_ok` (yes/no) and `notes` in `outputs/validation_sample.csv`,
-   then run the validation script. It reports correct reviewed merges divided
-   by reviewed merges, plus coverage. This is neither recall nor proof of all
-   stations' correctness. Later runs preserve reviewed samples and create a
-   separately named sample. Cluster IDs belong to the associated run/audit.
-6. Replace provisional equal AHP judgments with documented expert comparisons
-   if presenting that weighting scheme as expert-based. Review deduplication
-   radius, label thresholds and confidence weights before submission.
+1. Part A is blocked although `data/raw/AU4552_original.pdf` exists:
+   `pdfplumber` is absent, installation cannot reach a usable package source,
+   and the bundled `pdftotext` fails to launch with Windows DLL relocation
+   error 623. In a connected terminal run `python -m pip install pdfplumber`,
+   then `python src/complete_ev_counts.py`.
+   Do not overwrite the EV CSV without auditing raw coordinates, preserving
+   all 26 complete 2025/category totals and checking printed row/state totals.
+   These cross-checks have **not** been performed. The 11 ambiguous districts
+   remain missing; no CSV values were guessed or changed.
+2. Review `data/samples/district_crosswalk.csv`: **Sivagangai, Thoothukudi,
+   Kanniyakumari, Tiurupathur, Mayiladuthurai**. Only exact normalised names are
+   `one_to_one`. Other rows are `needs_human_check`; fuzzy/geocode destinations
+   are suggestions, not verified geography. A reviewed non-exact mapping must
+   use `many_to_one`, `verified=yes`, a polygon name and documentary evidence.
+   Multiple contributors must all be approved before their populations are
+   summed; one source row can never be split. Missing contributors leave the
+   aggregate missing. The initial crosswalk accepts 33 of 37 polygons; four
+   polygons are missing population and Mayiladuthurai has no resolved polygon.
+   Exact spelling alone still does not establish historical geography.
+3. Install `python -m pip install libpysal esda` in a connected terminal, rerun
+   `python run_all.py --offline`, then `python -m pytest -q`. The current Gi*
+   integration test is skipped. The real run has 23 eligible districts but
+   **0 actually used** for Moran/Gi*: no substitute statistics were generated.
+4. With internet run `python src/cache_map_assets.py outputs/tn_gap_map.html`.
+   Eleven external JS/CSS URLs remain uncached in the current run.
+5. With internet run `python src/load_boundaries.py --compare`. Both release
+   metadata and files named by `gjDownloadURL` are required for ADM2 and ADM1.
+   Actual provider comparison is blocked here; the default remains pinned.
+   Review boundary accuracy, coverage, historical year and redistribution rights.
+6. Review charger merges in `outputs/validation_sample.csv` and provisional
+   AHP judgments. Preserve review files; the pipeline writes a new timestamped
+   sample instead of erasing existing answers. Rerun `python run_acceptance.py`.
+7. Commits could not be created: this runtime denies `.git/index.lock` writes.
+   In your own terminal, after review run `git add .` and
+   `git commit -m "feat: add population compatibility and source acceptance checks"`.
+   The existing Git identity is left unchanged; no assistant attribution is added.
 
 ## Sources, licences and live fetching
 
 | Input | Download/source | Licence and cautions |
 |---|---|---|
-| District polygons | [udit-001/india-maps-data](https://github.com/udit-001/india-maps-data), exact commit and state slug in config | No explicit dataset licence found; repository says it curates others' data for personal use. Verify permission before redistributing the geometry. New districts may be missing. |
+| District polygons | [udit-001/india-maps-data](https://github.com/udit-001/india-maps-data), exact commit and state slug in config | No explicit dataset licence found; README says collection "for personal usage". Verify permission before redistributing the geometry. New districts may be missing. |
 | Chargers, roads, commercial nodes | [OSM Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API), one primary and two fallback servers | [OSM contributors, ODbL](https://www.openstreetmap.org/copyright); public service capacity is limited. Query box is calculated from polygons. |
 | Optional charger records | [OpenChargeMap](https://openchargemap.org/site/develop/api), only with `OCM_API_KEY` | Free developer access; retain attribution and check the data provider's individual terms. Current developer/terms pages may require login. Not required for the default run. |
 | Name geocoding | [OSM Nominatim](https://nominatim.openstreetmap.org) | ODbL; see [mandatory usage policy](https://operations.osmfoundation.org/policies/nominatim/). Single thread, cached answers, identifying User-Agent, at most one request per second. Intended for a small one-time district/RTO reconciliation, not scheduled bulk geocoding. |
@@ -203,8 +227,13 @@ The four columns and their provenance are saved in `gap_index_methods.json`:
 Commercial activity intentionally counts nodes only. It is a reproducible OSM
 proxy, not a complete business census or a deduplicated business count.
 Roads are projected, clipped to each district and coincident segments unioned.
-A successful empty OSM answer means observed count zero; a failed/partial
-answer means missing. All directions are positive; no indicator is inverted.
+A successful complete OSM answer with no matching features means observed
+count zero; a failed/partial answer or absent declared district coverage means
+missing. `INDICATOR_SOURCE_ORDER` selects state query-fingerprinted Overpass
+cache, matching national extract cache, then live Overpass. Each indicator
+records its source, cache and snapshot date; unknown dates are flagged.
+Roads are clipped at the state/district border and measured in each district
+local UTM CRS chosen automatically. All directions are positive; no indicator is inverted.
 Grid headroom is **not included**, because no suitable public district dataset
 was supplied. Greater road/activity density expresses demand, not measured
 charging utilization or confirmed electrical capacity.
@@ -344,8 +373,8 @@ ambiguous cells have not been manually guessed or treated as zero.
 Statistical Handbook 2022-23, table 2.1 (printed page 84):
 https://des.tn.gov.in/sites/default/files/2025-07/2.VITAL%20STATISTICS.pdf.
 These are official estimates, not synthetic values generated by the project
-and not Census 2011 enumeration. They are **candidates only**, not loaded into
-scores: newer district splits and expanded districts can differ from the
+and not Census 2011 enumeration. They attach only through the crosswalk rules
+above: newer district splits and expanded districts can differ from the
 pinned polygon geography. Source spelling is preserved. The handbook's
 explicit redistribution licence has not been established; do not re-label it
 as CC-BY-4.0. The previously documented IndiaSet source remains a separate
@@ -353,15 +382,20 @@ historic candidate.
 
 Current direct Python downloads still fail DNS resolution. The web retrieval
 route collected these official tables, but could not retrieve Overpass JSON.
-Road/POI indicators and live charger refresh remain unavailable here. The
-map therefore uses the existing charger cache, displays 26 historical basic
-ranks, and leaves the composite unranked. This is a partial real-data run,
+Live charger refresh remains unavailable here. Roads and places now come
+from the national cache, dated 2026-10-25T21:21:21 UTC, clipped to the state.
+The map uses existing charger observations, 26 historical basic ranks and
+23 complete-case composite ranks. This is a partial real-data run,
 not proof that every requested source or live service has been validated.
 
 ## India-wide build
 
-Run `python run_india.py --offline` using the supplied national GeoJSON and
-India PBF at this repository root. Open outputs/india/india_gap_map.html.
+Set the intended `BOUNDARY_PROVIDER` explicitly and cache it online before
+`python run_india.py --offline` using the supplied India PBF. The pinned
+provider downloads its commit-specific file listing and all state files;
+geoBoundaries downloads ADM2 through its metadata. The national loader uses
+the same provider setting as the state loader. Provider changes require
+reviewing national population/EV IDs again. Open outputs/india/india_gap_map.html.
 Run `python run_india.py --download-latest` to stream the current free
 Geofabrik extract before processing; network access is required. Interrupted
 refreshes preserve the previous validated file. `--refresh` re-extracts a
@@ -417,3 +451,138 @@ The official national Census 2011 workbook URL is now recorded in config.
 It remains historical candidate geography, not automatically compatible with
 the supplied 2021 district polygons. RTO data also needs a verified administrative
 crosswalk; office-point geocoding cannot establish a catchment population.
+
+## Boundary provider and rights
+
+The pinned repository README describes collection **"for personal usage"**
+and names **no data licence**. This is an unresolved redistribution risk,
+not permission to redistribute. The current network cannot independently
+re-fetch that README; the warning preserves the supplied source description.
+
+`BOUNDARY_PROVIDER` defaults to `"pinned_repo"`; choosing `"geoboundaries"`
+is explicit and affects both runners. The alternative downloads and preserves
+ADM2/ADM1 metadata JSON, the exact `gjDownloadURL` files, SHA-256 receipts and
+attribution text under `data/raw/geoboundaries_IND_*`. ADM2 has no state column:
+select the configured state in ADM1 by exact normalised name, then retain
+ADM2 polygons whose representative points lie inside it. Do not derive state
+membership from a district spelling table or fuzzy state guesses.
+
+Retrieved metadata identifies ADM2 as 2021 geography under ODbL 1.0 and ADM1
+as 2011 geography under CC BY 2.5 India. Preserve both licences and consider
+their different years. Metadata endpoints:
+https://www.geoboundaries.org/api/current/gbOpen/IND/ADM2/ and
+https://www.geoboundaries.org/api/current/gbOpen/IND/ADM1/ .
+`python src/load_boundaries.py --compare` prints both counts and exact source
+names present in only one provider, saving the comparison JSON if successful.
+Downloads and the actual spatial comparison are blocked in this environment;
+no alternative state district count is claimed.
+
+## Acceptance report
+
+`python run_acceptance.py` reads actual output files and prints PASS / PARTIAL /
+FAIL, including source/snapshot dates, raw/merged known-port counts, EV measure
+and year, population coverage, basic/composite ranks, actual spatial-statistic
+sample sizes, missing map assets, synthetic use and manual tasks. It writes
+`outputs/acceptance_report.json`. Missing evidence is PARTIAL; synthetic data
+or impossible charger counts FAIL. It does not infer success from implemented
+code or invent missing measurements. `outputs/feasibility.md` is the committed
+record of the current run; generated maps, caches and reports stay ignored.
+
+## Native Google Maps view for India
+
+A native Maps JavaScript API view is available in addition to Folium. The
+current saved national output contains 735 district polygons and 576 merged
+OSM station records; 575 assigned stations are displayed by default. The
+unassigned station remains in its audit. This is coverage of the supplied
+boundary snapshot, not a claim of every current district or operating charger.
+National EV/population inputs remain missing and demand ranks remain empty.
+
+The provided key was stored only in ignored `.env` as `GOOGLE_MAPS_API_KEY`.
+Replace it there after rotation. Browser API keys are visible in rendered
+HTML/network requests; restrict the key to Maps JavaScript API and authorised
+HTTP referrers. Enable Maps JavaScript API and billing in its Google Cloud
+project. For local testing allow `http://localhost:8000/*` and
+`http://127.0.0.1:8000/*`; use your precise production origin when deployed.
+Do not commit `.env` or the generated HTML. No Places API scraping, route
+calculation API or extra Google dataset is used.
+
+```powershell
+python run_india.py --google-map-only
+# Equivalently: python src/make_google_map.py
+python -m http.server 8000 --bind 127.0.0.1 --directory outputs/india
+```
+
+Open http://127.0.0.1:8000/india_google_map.html in your own browser.
+The map fits the national polygons, supports exact district/ID search (including
+repeated district names), supply/composite/road/commercial layers, station and
+district toggles, escaped source popups and Google Maps directions links.
+Missing values display as No data. Empty gap layers remain unranked.
+
+Normal national runs generate both maps when GOOGLE_MAPS_ENABLED=True and the
+key is available. `--google-map-only` uses the existing processed snapshot and
+can generate HTML without internet or reloading boundary providers. Viewing the
+Google basemap requires internet. Its runtime loader is not part of the offline
+Folium asset cache. The generated HTML manifest contains counts/provenance but
+never the key. Missing keys skip the optional Google view; network/authentication
+errors produce a clear page message.
+
+Verification: **83 passed, 1 skipped** across the full suite. Offline Python
+renderer tests, generated inline JavaScript syntax checks and a fake Google
+Data API execution test pass. The latter checks startup, null-data styling,
+ambiguous-name search, station toggles, popup clicks and auth-failure messaging. Browser preview could not reach the local server from the
+in-app browser, so actual Google API authorisation/rendering is unverified.
+After serving locally, check the browser for any Google Cloud billing, API
+activation or HTTP-referrer errors. This cannot be established from a valid-
+looking key alone. Git commit retry remains denied by .git/index.lock access.
+
+Official integration references:
+https://developers.google.com/maps/documentation/javascript/load-maps-js-api
+https://developers.google.com/maps/documentation/javascript/datalayer
+https://developers.google.com/maps/api-security-best-practices
+
+## Original PDF recovery and national acceptance commands
+
+`python src/complete_ev_counts.py` now implements the remaining EV recovery
+workflow. The primary reader uses pdfplumber word positions inside detected
+table-cell rectangles. The fallback uses pdftotext -layout only after primary
+failure. Fallback audit coordinates are explicitly labelled character columns
+and text lines, never invented PDF-point positions. The audit retains raw
+words/cells, source PDF hash and parser backend. Year/measure changes, unknown
+district labels, unexpected categories, duplicate cells, baseline disagreements
+and printed-total mismatches stop before CSV replacement. Missing cells or
+missing expected categories keep their district missing. CSV replacement is
+atomic and occurs only after the original complete districts pass.
+
+In the current environment the command is tested but original-PDF execution
+is still blocked: pdfplumber cannot be installed because DNS fails, and Git's
+bundled pdftotext executable fails to launch with Windows error 623. No EV CSV
+values were replaced and no successful coordinate extraction is claimed.
+
+Use `python run_acceptance.py --scope india` for the saved national outputs;
+plain `python run_acceptance.py` reports the state. The national report records
+610 raw/576 merged records, known ports for 151 raw/146 merged records, and
+road/commercial coverage for 735 supplied polygons. It separately records the
+Google view's 575 assigned stations. Compatible national EV/population values
+remain absent for all 735; there are no national demand ranks. The older
+national manifest did not record the selected provider, so provider provenance
+is PARTIAL rather than inferred from a filename. Use
+`python src/load_boundaries.py --compare --national` to compare national
+providers once all downloads are available. State commands and files are kept
+separate from the national acceptance scope.
+
+Source discovery is recorded in
+`data/samples/official_sources/national_source_candidates.json`. The official
+public VAHAN report and a third-party 2024 district/RTO layer were located, but
+no compatible national export was imported. The latter's measurement period
+meaning, reuse rights and geography remain unverified. Uploaded workbook/CSV
+content could not be retrieved; no file contents or values are inferred from
+their titles. If those files are already on your computer, copy them to
+`data/raw/supplied_user_files/` for local inspection. An RTO office location
+alone does not establish a district registration catchment.
+
+Latest full tests: 95 passed, 1 PySAL integration skip. Real map-library retries
+failed for all eleven URLs. Computer Use stopped browser validation because it
+could not establish the active Windows URL reliably. Git staging/commit remains
+blocked by .git/index.lock write permissions; reconnecting alone does not
+change the workspace profile's read-only .git access. No security settings or
+Git identity were changed to work around that restriction.

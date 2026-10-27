@@ -1,9 +1,6 @@
 """Folium map with the original gap layer and additional Slice 1 overlays."""
-import hashlib
 import html
 import json
-import re
-import shutil
 import branca.colormap as cm
 import folium
 import geopandas as gpd
@@ -11,7 +8,7 @@ import numpy as np
 import pandas as pd
 import config
 from map_links import google_links
-from utils import OUTPUTS, PROCESSED, RAW, ensure_dirs, request_with_retry
+from utils import OUTPUTS, PROCESSED, ensure_dirs
 
 MAP_HTML = OUTPUTS / config.MAP_FILENAME
 
@@ -58,28 +55,9 @@ def add_polygon_layer(m, districts, name, fields, style, show=True):
 
 
 def cache_map_assets(document):
-    """Copy cached JS/CSS next to HTML, so vector layers can open offline."""
-    urls = set(re.findall(r'(?:src|href)="(https://[^\"]+\.(?:js|css)(?:\?[^\"]*)?)"', document))
-    missing = []
-    for url in sorted(urls):
-        extension = ".css" if ".css" in url else ".js"
-        name = hashlib.sha256(url.encode()).hexdigest() + extension
-        cached = RAW / "map_assets" / name
-        try:
-            if not cached.exists() or config.REFRESH_DOWNLOADS:
-                payload = request_with_retry("GET", url).content
-                cached.parent.mkdir(parents=True, exist_ok=True)
-                cached.write_bytes(payload)
-            destination = OUTPUTS / config.MAP_ASSET_FOLDER / name
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(cached, destination)
-            document = document.replace(url, f"{config.MAP_ASSET_FOLDER}/{name}")
-        except RuntimeError as err:
-            print(f"[WARNING] Map asset unavailable: {err}")
-            missing.append(url)
-    if missing:
-        document = document.replace("</body>", '<div style="position:fixed;top:0;left:0;z-index:9999;background:white">Map libraries are not fully cached. Internet is required to open this preview.</div></body>')
-    return document, missing
+    """Keep the existing map API while sharing the audited cache implementation."""
+    from cache_map_assets import rewrite_assets
+    return rewrite_assets(document, MAP_HTML.parent)
 
 
 def main(include_slice1=True, coverage=None):
@@ -125,12 +103,14 @@ def main(include_slice1=True, coverage=None):
                             popup=folium.Popup(popup, max_width=config.POPUP_MAX_WIDTH)).add_to(raw_layer)
     raw_layer.add_to(m)
     excluded = 0
+    population_labels = []
     if include_slice1 and (OUTPUTS / "district_gap_index.csv").exists():
         index = pd.read_csv(OUTPUTS / "district_gap_index.csv")
         hotspots = pd.read_csv(OUTPUTS / "district_hotspots.csv")
         geo = districts[["district_key", "geometry"]].merge(index, on="district_key", how="left").merge(
             hotspots.drop(columns=["district"], errors="ignore"), on="district_key", how="left")
         excluded = int(geo["rank"].isna().sum())
+        population_labels = index.get("population_indicator_label", pd.Series(dtype=str)).dropna().unique().tolist()
         composite_scale = colour_scale(geo.composite_score, config.MAP_PALETTE, "Composite demand gap (entropy weights)")
         def composite_style(feature):
             p = feature["properties"]
@@ -165,6 +145,8 @@ def main(include_slice1=True, coverage=None):
              f"Missing EV data: {missing}; synthetic: {synthetic}; excluded from composite: {excluded}.",
              "Grey: no data; purple: no chargers; dashed: synthetic; Gi*: red hot / blue cold, FDR corrected.",
              "Few districts: hotspots are indicative, not conclusive. Basemap tiles need internet."]
+    if include_slice1:
+        notes.extend(population_labels)
     if "ev_measure" in districts:
         for measure in districts.ev_measure.dropna().unique():
             notes.append(f"EV observation: {measure}")
@@ -175,10 +157,17 @@ def main(include_slice1=True, coverage=None):
     m.get_root().html.add_child(folium.Element(f'<div style="{config.MAP_NOTE_CSS}">' + "<br>".join(html.escape(note) for note in notes) + "</div>"))
     document = m.get_root().render()
     missing_assets = []
-    if config.CACHE_MAP_ASSETS:
+    if config.MAP_OFFLINE_MODE or config.CACHE_MAP_ASSETS:
         document, missing_assets = cache_map_assets(document)
+    from cache_map_assets import inspect_assets
+    from utils import save_json
+    asset_report = inspect_assets(document, MAP_HTML.parent)
+    if not asset_report["offline_assets"]:
+        warning = f'<div style="{config.MAP_ASSET_WARNING_CSS}">Map libraries need internet. Cache the assets for offline vector display; basemap tiles stay online.</div>'
+        document = document.replace("</body>", warning + "</body>")
     MAP_HTML.write_text(document, encoding="utf-8")
-    print(f"Map saved: {MAP_HTML}; uncached JS/CSS assets: {len(missing_assets)}")
+    save_json(MAP_HTML.with_suffix(".assets.json"), asset_report)
+    print(f"Map saved: {MAP_HTML}; uncached JS/CSS assets: {len(asset_report['external_urls'])}")
     return m
 
 

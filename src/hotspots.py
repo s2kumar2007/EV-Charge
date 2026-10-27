@@ -40,7 +40,7 @@ def analyse_hotspots(boundaries, values, permutations=None, seed=None):
     result["class"] = result["class_raw"] = result["class_fdr"] = "not tested"
     finite = np.isfinite(frame.composite_score.astype(float))
     result["reason"] = np.where(finite, "insufficient observations", "missing composite index")
-    metadata = {"I": None, "expected_I": None, "p_value": None, "n": int(finite.sum()),
+    metadata = {"I": None, "expected_I": None, "p_value": None, "n": 0, "n_eligible": int(finite.sum()), "gistar_n": 0,
                 "permutations": permutations, "seed": seed,
                 "warning": "Few districts: indicative, not conclusive. Missing districts and islands are not tested."}
     if finite.sum() < config.HOTSPOT_MIN_OBSERVATIONS:
@@ -49,7 +49,10 @@ def analyse_hotspots(boundaries, values, permutations=None, seed=None):
         from libpysal.weights import Queen
         from esda import Moran, G_Local
     except ImportError as err:
-        raise RuntimeError("Hotspot analysis requires libpysal and esda. Install requirements.txt; no substitute statistic is used.") from err
+        result.loc[finite, "reason"] = "PySAL dependencies unavailable"
+        metadata["reason"] = "Install libpysal and esda; no substitute statistic is used."
+        print("[WARNING] " + metadata["reason"])
+        return result, metadata
     subset = frame.loc[finite].copy()
     # Removing missing districts can create new islands. Recheck after each removal.
     while len(subset):
@@ -63,7 +66,7 @@ def analyse_hotspots(boundaries, values, permutations=None, seed=None):
             break
         result.loc[islands, "reason"] = "no neighbours among complete districts"
         subset = subset.drop(index=islands)
-    metadata["n"] = len(subset)
+    metadata["n_connected"] = len(subset)
     if len(subset) < config.HOTSPOT_MIN_OBSERVATIONS:
         return result, metadata
     y = subset.loc[weights.id_order, "composite_score"].to_numpy(dtype=float)
@@ -102,7 +105,7 @@ def analyse_hotspots(boundaries, values, permutations=None, seed=None):
     result.loc[order, "class"] = result.loc[order, "class_fdr"]
     result.loc[order, "reason"] = np.where(testable, "tested", "undefined local variance")
     metadata.update(I=float(moran.I), expected_I=float(moran.EI), p_value=float(moran.p_sim),
-                    n_components=int(weights.n_components))
+                    n=len(subset), gistar_n=int(testable.sum()), n_components=int(weights.n_components))
     return result, metadata
 
 

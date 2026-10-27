@@ -1,0 +1,39 @@
+population_district,polygon_district,relation,method,evidence,verified
+Chennai,Chennai,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Kancheepuram,Kancheepuram,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Thiruvallur,Thiruvallur,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Cuddalore,Cuddalore,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Viluppuram,Viluppuram,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Vellore,Vellore,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Tiruvannamalai,Tiruvannamalai,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Salem,Salem,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Namakkal,Namakkal,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Dharmapuri,Dharmapuri,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Krishnagiri,Krishnagiri,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Erode,Erode,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Coimbatore,Coimbatore,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Tiruppur,Tiruppur,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+The Nilgiris,Nilgiris,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Tiruchirappalli,Tiruchirappalli,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Karur,Karur,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Perambalur,Perambalur,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Ariyalur,Ariyalur,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Pudukkottai,Pudukkottai,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Thanjavur,Thanjavur,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Nagapattinam,Nagapattinam,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Thiruvarur,Thiruvarur,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Madurai,Madurai,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Theni,Theni,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Dindigul,Dindigul,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Ramanathapuram,Ramanathapuram,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Virudhunagar,Virudhunagar,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Sivagangai,Sivaganga,needs_human_check,fuzzy,"Name is not exact; suggestion, not verified.",no
+Tirunelveli,Tirunelveli,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Thoothukudi,Thoothukkudi,needs_human_check,fuzzy,"Name is not exact; suggestion, not verified.",no
+Kanniyakumari,Kanyakumari,needs_human_check,fuzzy,"Name is not exact; suggestion, not verified.",no
+Tenkasi,Tenkasi,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Kallakurichi,Kallakurichi,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Chengalpattu,Chengalpattu,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Ranipet,Ranipet,one_to_one,exact,Exact normalised name; geography changes still need review.,yes
+Tiurupathur,Tirupathur,needs_human_check,fuzzy,"Name is not exact; suggestion, not verified.",no
+Mayiladuthurai,,needs_human_check,geocode,"Name is not exact; suggestion, not verified. No polygon resolved.",no

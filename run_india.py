@@ -18,6 +18,7 @@ import gap_index
 import hotspots
 import india_data
 import make_map
+import make_google_map
 from build_scores import assign_chargers_to_districts
 from extract_india import extract, source_identity
 from pbf_reader import header_metadata
@@ -53,6 +54,7 @@ def reconcile(raw,assigned,table):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--google-map-only', action='store_true', help='Generate Google Maps HTML from existing national outputs without fetching or recalculating data')
     parser.add_argument('--refresh',action='store_true',help='Re-extract local PBF; does not download a new snapshot')
     parser.add_argument('--offline',action='store_true',help='Also prohibit map-library downloads')
     parser.add_argument('--download-latest',action='store_true',help='Download the current free Geofabrik India snapshot before processing')
@@ -60,9 +62,12 @@ def main(argv=None):
     if args.offline and args.download_latest:
         parser.error('--offline cannot be combined with --download-latest')
     config.OFFLINE=args.offline
+    config.REFRESH_DOWNLOADS=args.refresh
     ensure_dirs()
     processed=PROCESSED/config.INDIA_OUTPUT_FOLDER; output=OUTPUTS/config.INDIA_OUTPUT_FOLDER
     processed.mkdir(parents=True,exist_ok=True); output.mkdir(parents=True,exist_ok=True)
+    if args.google_map_only:
+        return run_step('India: Google Maps from saved national outputs', make_google_map.main, processed, output)
     with output_locations(processed,output):
         boundaries=run_step('India 1: supplied district boundaries',india_data.load_boundaries)
         boundaries[['district','district_key']].to_csv(output/'district_directory.csv',index=False)
@@ -115,7 +120,7 @@ def main(argv=None):
         snapshot=header_metadata(pbf_path) if pbf_path.exists() else {'snapshot_utc':None}
         config.MAP_SOURCE_NOTE += f" OSM snapshot UTC: {snapshot.get('snapshot_utc') or 'unknown'}; file: {data['source']['file']}. Display polygons simplified; calculations use full geometry."
         run_step('India 9: interactive national map',make_map.main,coverage=selected)
-        manifest={'osm_header':snapshot,'generated_utc':datetime.now(timezone.utc).isoformat(),'boundary_source':source_identity(ROOT/config.INDIA_BOUNDARY_FILE),
+        manifest={'osm_header':snapshot,'generated_utc':datetime.now(timezone.utc).isoformat(),'boundary_source':boundaries.attrs.get('source_manifest', {'provider':config.BOUNDARY_PROVIDER, 'warning':'No boundary manifest provided by caller'}),
             'osm_source':data['source'],'district_count':len(boundaries),'raw_chargers':raw_counts,'deduplicated_chargers':dedup_counts,
             'duplicates_removed':len(raw)-len(merged),'road_ways':len(data['roads']['elements']),'commercial_nodes':len(data['pois']['elements']),
             'districts_with_ev':int(basic.ev_total.notna().sum()),'districts_with_population':int(population.population.notna().sum()),
@@ -126,6 +131,9 @@ def main(argv=None):
                 'National EV and population inputs require explicit provenance and compatible boundaries',
                 'OSM coverage/public access/uptime incomplete; review charger merge validation sample']}
         save_json(output/'run_manifest.json',manifest)
+        if config.GOOGLE_MAPS_ENABLED:
+            manifest['google_maps'] = run_step('India 10: Google Maps national view', make_google_map.main, processed, output)
+            save_json(output/'run_manifest.json',manifest)
         print('\nNational checks:',manifest,flush=True)
         print('\nRadius sensitivity:\n'+sensitivity.to_string(index=False),flush=True)
         print('\nConfidence:\n'+merged.confidence.describe().to_string(),flush=True)

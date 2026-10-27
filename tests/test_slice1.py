@@ -197,3 +197,13 @@ def test_gistar_high_cluster_grid():
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q", "-rs"]))
+
+
+def test_missing_pysal_leaves_actual_usage_zero(monkeypatch):
+    monkeypatch.setitem(sys.modules, "libpysal", None)
+    b = gpd.GeoDataFrame({"district": ["A", "B", "C"], "district_key": ["a", "b", "c"]},
+        geometry=[box(x, 0, x+1, 1) for x in range(3)], crs=config.WGS84)
+    result, metadata = hotspots.analyse_hotspots(b, pd.DataFrame({"district_key": b.district_key, "composite_score": [1, 2, 3]}))
+    assert metadata["n"] == 0 and metadata["n_eligible"] == 3 and metadata["gistar_n"] == 0
+    assert metadata["I"] is None and result.p_value.isna().all()
+    assert result.reason.eq("PySAL dependencies unavailable").all()

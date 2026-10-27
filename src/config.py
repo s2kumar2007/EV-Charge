@@ -122,7 +122,7 @@ POPULATION_BOUNDARIES_VERIFIED = False
 INDICATORS = ["ev_pressure", "evs_per_100k", "road_km_per_km2", "commercial_per_km2"]
 INDICATOR_SOURCES = {
     "ev_pressure": "VAHAN EV total / selected OSM + optional OCM stations or ports",
-    "evs_per_100k": "VAHAN EV total / compatible district population * 100000",
+    "evs_per_100k": "annual new EV registrations per 100,000 people (2022 population estimate)",
     "road_km_per_km2": "OSM trunk/primary ways clipped to district / district area",
     "commercial_per_km2": "OSM shop or fuel/restaurant/marketplace nodes / district area",
 }
@@ -168,7 +168,7 @@ MAP_SOURCE_NOTE = "OSM contributors (ODbL); optional OpenChargeMap (provider ter
 BOUNDARY_LICENCE = "No explicit data licence found in repository; verify permission before redistribution."
 # CDN dependencies are cached alongside downloads. Basemap tiles stay online;
 # the offline map still shows its district polygons and charger circles.
-CACHE_MAP_ASSETS = True
+CACHE_MAP_ASSETS = False  # Legacy opt-in; prefer MAP_OFFLINE_MODE below.
 MAP_ASSET_FOLDER = "assets"
 # Map note styles are editable here rather than scattered through rendering code.
 MAP_NOTE_CSS = "position:fixed;bottom:10px;left:10px;z-index:9999;background:white;padding:10px;max-width:480px;font-size:12px;border:1px solid grey"
@@ -228,3 +228,105 @@ GOOGLE_MAPS_DIRECTIONS_URL = "https://www.google.com/maps/dir/"
 GOOGLE_MAPS_URL_VERSION = "1"
 GOOGLE_MAPS_TRAVEL_MODE = "driving"
 OFFICIAL_CENSUS_DISTRICT_URL = "https://censusindia.gov.in/nada/index.php/catalog/42557/download/46183/2011-IndiaStateDist-0000.xlsx"
+
+# Population proposals attach only after the crosswalk rules pass.
+POPULATION_CANDIDATE_FILE = "population_official_estimates_candidate.csv"
+POPULATION_CROSSWALK_FILE = "district_crosswalk.csv"
+POPULATION_USE_CANDIDATE_CROSSWALK = True
+POPULATION_INDICATOR_LABEL = "annual new EV registrations per 100,000 people (2022 population estimate)"
+PUBLIC_EV_PDF_FILE = "AU4552_original.pdf"
+
+# Use the first available complete source for each optional OSM indicator.
+INDICATOR_SOURCE_ORDER = ["state_cache", "national_cache", "live_overpass"]
+NATIONAL_EXTRACT_CACHE_PATTERN = "india_pbf_*_v{version}.json.gz"
+INDICATOR_MISSING_SOURCE = "missing"
+INDICATOR_UNKNOWN_DATE = "unknown"
+
+# Library caching is opt-in. Tiles are not downloaded by this setting.
+MAP_OFFLINE_MODE = False
+MAP_ASSET_CACHE_DIR = "map_assets"
+MAP_ASSET_FALLBACK_EXTENSION = ".asset"
+
+# Keep the state provider unchanged until the user selects the alternative.
+BOUNDARY_PROVIDER = "pinned_repo"  # or "geoboundaries"; used by both runners
+GEOBOUNDARIES_METADATA_URLS = {
+    "ADM2": INDIA_BOUNDARY_METADATA_URL,
+    "ADM1": "https://www.geoboundaries.org/api/current/gbOpen/IND/ADM1/",
+}
+GEOBOUNDARIES_NAME_COLUMN = "shapeName"
+GEOBOUNDARIES_ID_COLUMN = "shapeID"
+GEOBOUNDARIES_CACHE_PREFIX = "geoboundaries_IND"
+BOUNDARY_REPO_TREE_URL = f"https://api.github.com/repos/{BOUNDARY_REPO}/git/trees/{BOUNDARY_COMMIT}?recursive=1"
+BOUNDARY_REPO_RAW_BASE = f"https://raw.githubusercontent.com/{BOUNDARY_REPO}/{BOUNDARY_COMMIT}/"
+BOUNDARY_REPO_STATE_PREFIX = "geojson/states/"
+BOUNDARY_REPO_README_URL = BOUNDARY_REPO_RAW_BASE + "README.md"
+BOUNDARY_RIGHTS_NOTE = 'Pinned repository README describes collection "for personal usage" and names no data licence. Redistribution permission is unresolved.'
+
+# Acceptance inputs are kept together so the report can be reused elsewhere.
+ACCEPTANCE_OUTPUT_FILE = "acceptance_report.json"
+ACCEPTANCE_INPUT_FILES = {
+    "scores": ("outputs", "district_gap_scores.csv"),
+    "selected": ("outputs", "district_gap_scores_deduplicated.csv"),
+    "index": ("outputs", "district_gap_index.csv"),
+    "raw": ("data/processed", "chargers_raw.csv"),
+    "deduplicated": ("data/processed", "chargers_deduplicated.csv"),
+    "population": ("data/processed", "district_population.csv"),
+    "osm": ("data/processed", "district_osm_indicators.csv"),
+    "crosswalk": ("data/samples", POPULATION_CROSSWALK_FILE),
+}
+ACCEPTANCE_HOTSPOT_FILE = "hotspot_statistics.json"
+ACCEPTANCE_BOUNDARY_MANIFEST = "boundary_manifest.json"
+BOUNDARY_COMPARISON_FILE = "boundary_provider_comparison.json"
+
+GEOBOUNDARIES_COUNTRY_ISO = "IND"
+POPULATION_GENERIC_INDICATOR_LABEL = "EV registrations per 100,000 people (verify registration period and population year)"
+
+NATIONAL_EXTRACT_MANIFEST_FILE = "outputs/india/run_manifest.json"
+
+# Native Google Maps view of the same national outputs; credentials stay in .env.
+GOOGLE_MAPS_ENABLED = True
+GOOGLE_MAPS_API_KEY_ENV = "GOOGLE_MAPS_API_KEY"
+GOOGLE_MAPS_API_URL = "https://maps.googleapis.com/maps/api/js"
+GOOGLE_MAPS_API_VERSION = "weekly"
+GOOGLE_MAPS_INITIAL_ZOOM = 5
+GOOGLE_MAPS_MAP_TYPE = "roadmap"
+GOOGLE_MAPS_LOAD_TIMEOUT_MS = 20000
+GOOGLE_MAPS_INDIA_FILENAME = "india_google_map.html"
+GOOGLE_MAPS_TEMPLATE_FILE = "google_map_template.html"
+GOOGLE_MAPS_INCLUDE_UNASSIGNED_CHARGERS = False
+GOOGLE_MAPS_BOUNDARY_INPUT = "districts_scored.geojson"
+GOOGLE_MAPS_CHARGER_INPUT = "chargers_deduplicated_assigned.csv"
+GOOGLE_MAPS_INDEX_INPUT = "district_gap_index.csv"
+GOOGLE_MAPS_COVERAGE_INPUT = "district_gap_scores_deduplicated.csv"
+GOOGLE_MAPS_MANIFEST_INPUT = "run_manifest.json"
+GOOGLE_MAPS_LAYERS = {
+    "charger_count": "Mapped charger stations (supply)",
+    "composite_score": "Composite gap index",
+    "ev_pressure": "EV registrations per charging unit",
+    "evs_per_100k": "EV registrations per 100,000 people (verify population year)",
+    "road_km_per_km2": "Trunk/primary road km per square km",
+    "commercial_per_km2": "Commercial nodes per square km",
+}
+GOOGLE_MAPS_DEFAULT_LAYER = "charger_count"
+GOOGLE_MAPS_POPUP_FIELDS = ["district", "district_key", "charger_count", "port_count", "ev_total", "population", "ev_measure", "period_start", "period_end", "data_flag", "composite_score", "rank", "index_status", "missing_indicators"]
+GOOGLE_MAPS_CHARGER_FIELDS = ["name", "operator", "district", "ports", "ports_known", "sources", "confidence"]
+GOOGLE_MAPS_NOTE = "OSM snapshot observations; OSM contributors (ODbL). Charger presence does not prove public access, uptime or capacity. Missing EV/population values remain unranked. Boundary attribution and coverage are recorded in the national run manifest. Google basemap requires internet, enabled billing and an authorised browser key."
+
+# Original-PDF recovery uses table geometry and refuses ambiguous numeric cells.
+PUBLIC_EV_PDF_FIRST_TABLE_PAGE = 5  # One-based page containing the annexure header.
+PUBLIC_EV_PDF_TABLE_SETTINGS = {"vertical_strategy": "lines", "horizontal_strategy": "lines"}
+PUBLIC_EV_PDF_WORD_SETTINGS = {"x_tolerance": 1, "y_tolerance": 2}
+PUBLIC_EV_PDF_CELL_INSET_PT = 0.5
+PUBLIC_EV_PDF_AUDIT_FILE = "public_ev_pdf_cells.json"
+PUBLIC_EV_PDF_CHECKS_FILE = "public_ev_pdf_checks.json"
+PUBLIC_EV_PDF_LAYOUT_FILE = "AU4552_layout.txt"
+PUBLIC_EV_PDF_READER_CANDIDATES = ["pdftotext", "C:/Program Files/Git/mingw64/bin/pdftotext.exe"]
+PUBLIC_EV_DISTRICT_TOTAL_LABELS = {"total", "districttotal"}
+PUBLIC_EV_STATE_TOTAL_LABELS = {"grandtotal", "statetotal"}
+PUBLIC_EV_MEASURE_LABEL = "annual new EV registrations, not cumulative fleet"
+
+PUBLIC_EV_PDF_TOTAL_TEXT = ["Grand Total", "State Total", "District Total", "Total"]
+INDIA_ACCEPTANCE_OUTPUT_FILE = "acceptance_report.json"
+INDIA_SOURCE_CANDIDATES_FILE = "national_source_candidates.json"
+INDIA_VAHAN_REPORT_URL = "https://analytics.parivahan.gov.in/analytics/vahanpublicreport"
+INDIA_EV_CANDIDATE_LAYER_URL = "https://livingatlas.esri.in/server/rest/services/India/District_wise_RTO_Vehicle_Registration/MapServer/0"
