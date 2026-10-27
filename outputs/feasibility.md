@@ -71,3 +71,24 @@ original PDF, obtain compatible population geography, obtain OSM road/POI
 responses, install the PySAL dependencies and execute its integration test.
 Boundary redistribution rights and the human merge-validation sample also
 remain to be checked. No paid API is required for the implemented default route.
+
+## National build verification (27 October 2026)
+
+The India binary extraction completed from the supplied snapshot dated
+2026-10-25T21:21:21 UTC: 610 raw charger records, 576 merged stations,
+246786 main-road ways and 179302 commercial nodes. These are OSM observations,
+not a complete inventory of working public chargers. Ports are known for 151
+raw records; other records retain the flagged one-port assumption.
+
+The national test suite reports 54 passed and 1 skipped. The skipped PySAL
+integration test still needs libpysal and esda; it is not counted as verified.
+Live download connectivity timed out. A safe current-extract refresh command
+is implemented and tested with fake network responses, but a successful live
+refresh has not been verified in this environment.
+
+National EV and compatible population inputs are absent. National gap and
+composite ranks therefore remain empty; the supply map must not be described
+as a measured demand-gap ranking. State outputs remain unchanged. National
+count reconciliation and source hashes are recorded in outputs/india/run_manifest.json
+when the full run completes. The map explicitly warns about missing inputs
+and uncached display libraries where relevant.
