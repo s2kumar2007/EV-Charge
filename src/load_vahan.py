@@ -73,13 +73,13 @@ def read_vahan_file():
         return pd.DataFrame(columns=["district", "ev_total"]), "district"
     print(f"  using VAHAN file: {display_name}")
     if is_synthetic_test:
-        print("  [WARNING] SYNTHETIC TEST DATA IN USE - these are not real EV counts. Do not use these results in the submission.")
+        print("  [WARNING] SYNTHETIC TEST DATA IN USE - do not use these results in the submission.")
     df = pd.read_csv(source_path)
     df.columns = [c.strip().lower() for c in df.columns]
     name_col = "district" if "district" in df.columns else "rto" if "rto" in df.columns else None
     if name_col is None:
         raise ValueError(f"{source_path.name} needs a 'district' or an 'rto' column. Found: {list(df.columns)}")
-    df = df[~df[name_col].astype(str).str.upper().str.contains("EXAMPLE")].copy()
+    df = df.dropna(subset=[name_col]).copy()
     for col in ["ev_total", "population"] + TYPE_COLUMNS:
         if col in df.columns:
             df[col] = _numbers(df[col])
@@ -97,8 +97,10 @@ def read_vahan_file():
     if is_synthetic_test:
         df["data_flag"] = "synthetic"
     for column in ["ev_total", "population"]:
-        if column in df and (df[column].dropna() < 0).any():
-            raise ValueError(f"Negative {column} in VAHAN input; fix the export.")
+        if column in df:
+            numbers = df[column].dropna()
+            if (numbers < 0).any() or not np.isfinite(numbers).all():
+                raise ValueError(f"Invalid or negative {column} in VAHAN input; fix the export.")
     return df, name_col
 
 
@@ -125,8 +127,13 @@ def load_vahan(boundaries, geocode_fn=None):
     agg = {"ev_total": "sum"}
     if "population" in used.columns:
         agg["population"] = "max"
-    if "data_flag" in used.columns:     # a file may mark its own rows as synthetic; keep that mark
-        agg["data_flag"] = lambda s: "synthetic" if (s.astype(str).str.strip().str.lower() == "synthetic").any() else "|".join(sorted(set(s.dropna().astype(str))))
+    if "data_flag" in used.columns:
+        def combine_flags(series):
+            flags = series.dropna().astype(str).str.strip()
+            if flags.str.contains("synthetic", case=False).any():
+                return "synthetic"
+            return "|".join(sorted(set(flags[flags.ne("")]))) or "real"
+        agg["data_flag"] = combine_flags
     real = used.groupby("district_key", as_index=False).agg(agg)
     if "data_flag" not in real.columns:
         real["data_flag"] = "real"
@@ -155,11 +162,11 @@ def main():
     write_template()
     source_path, display_name, is_synthetic_test = get_vahan_source()
     if source_path is not None:
-        print(f"[2/5] VAHAN: found ({display_name}).")
+        print(f"VAHAN: found ({display_name}).")
         if is_synthetic_test:
-            print("  [WARNING] SYNTHETIC TEST DATA IN USE - these are not real EV counts. Do not use these results in the submission.")
+            print("  [WARNING] SYNTHETIC TEST DATA IN USE - do not use these results in the submission.")
     else:
-        print(f"[2/5] VAHAN: {RAW_VAHAN_FILE.name} NOT found in data/raw/ or data/samples/ (all districts will show 'no EV data').")
+        print(f"VAHAN: {RAW_VAHAN_FILE.name} NOT found in data/raw/ or data/samples/ (all districts will show 'no EV data').")
 
 
 if __name__ == "__main__":

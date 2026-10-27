@@ -7,13 +7,16 @@ from utils import RAW, PROCESSED, cached_json, norm_key, ensure_dirs
 
 def download_population(force=False):
     """The free API exposes the cited Parquet dataset as paginated JSON."""
+    import hashlib
+    identity = (config.POPULATION_URL, config.POPULATION_DATASET, config.POPULATION_API_CONFIG, config.POPULATION_API_SPLIT)
+    fingerprint = hashlib.sha256(str(identity).encode()).hexdigest()
     rows, offset = [], 0
     while True:
         params = {"dataset": config.POPULATION_DATASET, "config": config.POPULATION_API_CONFIG,
                   "split": config.POPULATION_API_SPLIT, "offset": offset, "length": config.POPULATION_PAGE_SIZE}
-        snapshot = cached_json(RAW / f"population_{config.POPULATION_YEAR}_{offset}.json", "GET",
+        snapshot = cached_json(RAW / f"population_{config.POPULATION_YEAR}_{fingerprint}_{offset}.json", "GET",
                                config.POPULATION_URL, params=params, force=force)
-        if "rows" not in snapshot or "num_rows_total" not in snapshot:
+        if "rows" not in snapshot or "num_rows_total" not in snapshot or snapshot.get("partial"):
             raise ValueError("Population API did not return a complete page.")
         page = [record["row"] for record in snapshot["rows"]]
         rows.extend(page)

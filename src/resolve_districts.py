@@ -38,9 +38,9 @@ def geocode(query):
 
 
 def clean_rto_name(name):
-    """'CHENNAI (CENTRAL) RTO - TN01' -> 'CHENNAI'. Removes bracket text, codes and the word RTO."""
+    """Remove office details, vehicle registration codes and the RTO label. Removes bracket text, codes and the word RTO."""
     text = re.sub(config.RTO_BRACKETS_PATTERN, " ", str(name))
-    text = re.sub(config.RTO_CODE_PATTERN, " ", text)           # codes like TN-01 or TN 33
+    text = re.sub(config.RTO_CODE_PATTERN, " ", text)           # registration codes are matched by a configurable pattern
     text = re.sub(config.RTO_WORD_PATTERN, " ", text, flags=re.I)
     text = re.sub(r"[-,]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()

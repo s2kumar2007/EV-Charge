@@ -14,3 +14,4 @@ data/processed/*
 outputs/*
 !outputs/.gitkeep
 !outputs/feasibility.md
+.test_tmp/

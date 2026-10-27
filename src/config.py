@@ -166,3 +166,12 @@ SYNTHETIC_DASH = "6,4"
 COLOUR_CONSTANT_SPAN = 1.0
 MAP_SOURCE_NOTE = "OSM contributors (ODbL); optional OpenChargeMap (provider terms); VAHAN (manual export); third-party boundaries. Population: Census 2011 compilation (CC-BY-4.0), only after boundary review."
 BOUNDARY_LICENCE = "No explicit data licence found in repository; verify permission before redistribution."
+# CDN dependencies are cached alongside downloads. Basemap tiles stay online;
+# the offline map still shows its district polygons and charger circles.
+CACHE_MAP_ASSETS = True
+MAP_ASSET_FOLDER = "assets"
+# Map note styles are editable here rather than scattered through rendering code.
+MAP_NOTE_CSS = "position:fixed;bottom:10px;left:10px;z-index:9999;background:white;padding:10px;max-width:480px;font-size:12px;border:1px solid grey"
+MAP_ASSET_WARNING_CSS = "position:fixed;top:0;left:0;z-index:9999;background:white"
+PRIVATE_PARAMETER_KEYS = {"key", "api_key", "token"}
+NOMINATIM_POLICY_URL = "https://operations.osmfoundation.org/policies/nominatim/"

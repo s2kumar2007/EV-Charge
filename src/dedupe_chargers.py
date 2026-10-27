@@ -137,7 +137,10 @@ def main(chargers=None):
     sample_path = OUTPUTS / "validation_sample.csv"
     # Never erase the user's hand-written review on a later pipeline run.
     if sample_path.exists():
-        sample_path = OUTPUTS / "validation_sample_next.csv"
+        # Keep every reviewed file. New samples receive a unique suffix.
+        from datetime import datetime, timezone
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+        sample_path = OUTPUTS / f"validation_sample_{stamp}.csv"
     sample.to_csv(sample_path, index=False)
     print(f"Deduplication: {len(chargers)} raw -> {len(merged)} stations; {len(chargers) - len(merged)} removed")
     print(sensitivity.to_string(index=False))

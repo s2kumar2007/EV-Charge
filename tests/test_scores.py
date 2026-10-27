@@ -12,6 +12,7 @@ Uses small in-memory datasets to verify:
 """
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -151,6 +152,9 @@ def test_data_flag_mixed_rows():
 
 def test_synthetic_test_data_gating():
     """Test (d): with USE_SYNTHETIC_TEST_DATA = False and no real file, the synthetic test file is NOT loaded."""
+    # File existence is invented too; the test never depends on a real sample.
+    exists_patch = patch.object(Path, "exists", lambda path: path.name == load_vahan.SYNTHETIC_TEST_FILE.name)
+    exists_patch.start()
     orig_setting = getattr(config, "USE_SYNTHETIC_TEST_DATA", False)
     orig_raw_file = load_vahan.RAW_VAHAN_FILE
     orig_sample = getattr(config, "VAHAN_SAMPLE_FILE", "")
@@ -170,6 +174,7 @@ def test_synthetic_test_data_gating():
         assert is_syn is True
         print("PASS  (d) with USE_SYNTHETIC_TEST_DATA = False and no real file, the synthetic test file is NOT loaded")
     finally:
+        exists_patch.stop()
         config.USE_SYNTHETIC_TEST_DATA = orig_setting
         config.VAHAN_SAMPLE_FILE = orig_sample
         load_vahan.RAW_VAHAN_FILE = orig_raw_file

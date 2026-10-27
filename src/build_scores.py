@@ -83,6 +83,9 @@ def main(chargers=None, boundaries=None, ev_table=None, use_dedup=None):
     table = boundaries[["district", "district_key"]].merge(ev_table, on="district_key", how="left", validate="one_to_one")
     table["raw_charger_count"], table["raw_port_count"] = count_units(raw_assigned, table.district_key)
     table["charger_count"], table["port_count"] = count_units(selected, table.district_key)
+    if use_dedup:
+        table["deduplicated_charger_count"] = table["charger_count"]
+        table["deduplicated_port_count"] = table["port_count"]
     table["count_basis"] = "deduplicated" if use_dedup else "raw"
     table = rank_districts(table)
     if "population" in table:
@@ -90,7 +93,7 @@ def main(chargers=None, boundaries=None, ev_table=None, use_dedup=None):
     filename = "district_gap_scores_deduplicated.csv" if use_dedup else SCORES_CSV.name
     columns = ["district", "ev_total", "charger_count", "port_count", "gap_score", "gap_unit", "rank", "data_flag", "status",
                "raw_charger_count", "raw_port_count", "count_basis", "district_key"]
-    columns += [c for c in ("population", "evs_per_100k") if c in table]
+    columns += [c for c in ("deduplicated_charger_count", "deduplicated_port_count", "population", "evs_per_100k") if c in table]
     table[columns].to_csv(OUTPUTS / filename, index=False)
     geo = boundaries[["district_key", "geometry"]].merge(table, on="district_key", validate="one_to_one")
     target = PROCESSED / "districts_scored_deduplicated.geojson" if use_dedup else SCORED_GEOJSON

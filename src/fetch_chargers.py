@@ -14,7 +14,7 @@ import pandas as pd
 from dotenv import load_dotenv
 
 import config
-from utils import PROCESSED, RAW, ROOT, ensure_dirs, request_with_retry, fetch_overpass
+from utils import PROCESSED, RAW, ROOT, ensure_dirs, request_with_retry, fetch_overpass, cached_json
 
 OSM_CACHE = RAW / f"osm_chargers_{config.STATE_SLUG}.json"
 OCM_CACHE = RAW / f"ocm_chargers_{config.STATE_SLUG}.json"
@@ -29,6 +29,18 @@ def overpass_query(bounds):
 
 
 def fetch_osm_raw(bounds, force=False):
+    # Prefer query-fingerprinted caches created by this version.
+    import hashlib
+    query = overpass_query(bounds)
+    current = RAW / f"osm_chargers_{config.STATE_SLUG}_{hashlib.sha256(query.encode()).hexdigest()}.json"
+    if current.exists() and not force:
+        return fetch_overpass(query, "osm_chargers")
+    if OSM_CACHE.exists() and not force:
+        print("[WARNING] Using legacy OSM cache from Slice 0; download date/query metadata unavailable. Use --refresh online to replace it.")
+        from utils import validate_overpass
+        value = json.loads(OSM_CACHE.read_text(encoding="utf-8"))
+        validate_overpass(value)
+        return value
     return fetch_overpass(overpass_query(bounds), "osm_chargers", force=force)
 
 
@@ -78,16 +90,18 @@ def parse_osm(data):
 
 
 def fetch_ocm_raw(api_key, bounds, force=False):
-    if OCM_CACHE.exists() and not force:
-        print(f"  OCM: using cached file {OCM_CACHE.name}")
-        return json.loads(OCM_CACHE.read_text(encoding="utf-8"))
+    import hashlib
+    fingerprint = hashlib.sha256(str(tuple(bounds)).encode()).hexdigest()
+    path = RAW / f"ocm_chargers_{config.STATE_SLUG}_{fingerprint}.json"
     west, south, east, north = bounds
     params = {"output": "json", "boundingbox": f"({south},{west}),({north},{east})",
               "maxresults": config.OCM_MAX_RESULTS, "compact": "false", "verbose": "false", "key": api_key}
-    print("  OCM: requesting chargers ...")
-    data = request_with_retry("GET", config.OCM_URL, params=params, timeout=config.NETWORK_TIMEOUT_S).json()
-    OCM_CACHE.write_text(json.dumps(data), encoding="utf-8")
-    return data
+    def validate(value):
+        if not isinstance(value, list):
+            raise ValueError("OpenChargeMap returned an invalid response.")
+        if len(value) >= config.OCM_MAX_RESULTS:
+            raise ValueError("OpenChargeMap result limit reached. Raise OCM_MAX_RESULTS before scoring incomplete data.")
+    return cached_json(path, "GET", config.OCM_URL, params=params, force=force, validator=validate)
 
 
 def parse_ocm(data):
@@ -116,7 +130,7 @@ def fetch_chargers(boundaries, force=False):
     if api_key:
         try:
             rows += parse_ocm(fetch_ocm_raw(api_key, bounds, force))
-        except RuntimeError as err:
+        except (RuntimeError, ValueError) as err:
             print(f"  [warning] OpenChargeMap skipped: {err}")
     else:
         print("  OCM: no OCM_API_KEY in .env -> using OpenStreetMap only.")

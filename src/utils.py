@@ -37,6 +37,8 @@ def request_with_retry(method, url, attempts=None, wait=None, **kwargs):
     wait = config.RETRY_WAIT_S if wait is None else wait
     kwargs.setdefault("headers", {"User-Agent": config.USER_AGENT})
     kwargs.setdefault("timeout", config.NETWORK_TIMEOUT_S)
+    if attempts < 1:
+        raise ValueError("RETRY_ATTEMPTS must be at least one.")
     for attempt in range(1, attempts + 1):
         try:
             response = requests.request(method, url, **kwargs)
@@ -71,7 +73,8 @@ def cached_json(path, method, url, force=False, validator=None, **kwargs):
         validator(value)
     save_json(path, value)
     # Keys are deliberately excluded from metadata.
-    query = kwargs.get("data", {})
+    query = {"data": kwargs.get("data", {}),
+             "params": {k: v for k, v in kwargs.get("params", {}).items() if k.lower() not in config.PRIVATE_PARAMETER_KEYS}}
     save_json(path.with_suffix(path.suffix + ".meta.json"), {
         "url": url, "downloaded_utc": datetime.now(timezone.utc).isoformat(),
         "query_sha256": hashlib.sha256(str(query).encode()).hexdigest(),

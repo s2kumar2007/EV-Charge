@@ -16,3 +16,29 @@
 - Synthetic test data: added data/samples/vahan_tn_ev_by_district_SYNTHETIC_TEST.csv and USE_SYNTHETIC_TEST_DATA setting with loud warning.
 - Synthetic data tests: added tests in tests/test_scores.py for data_flag preservation, aggregation, and gating.
 - Documentation: added Synthetic test data section to README.md explaining test usage and submission restrictions.
+
+## 2026-10-27 - Slices 0 and 1
+
+- Preserved Slice 0 CSV/HTML names and raw-count layer; selected deduplicated
+  counts go into a separate CSV with raw counts alongside them.
+- Added conservative metric-distance/name/operator merging, max-known ports,
+  confidence components, source membership audits, radius sensitivity,
+  preserved human validation samples, and reviewed-merge precision reporting.
+- Added documented population downloads with an explicit historical-boundary
+  review gate and manual compatible-population fallback; never invented values.
+- Added cached OSM road clipping and commercial node density. Failed/partial
+  data remain missing rather than being treated as zero.
+- Added complete-case entropy and editable AHP index, consistency checks,
+  score-based Spearman comparison, seeded Dirichlet rank ranges/top-K shares.
+- Added PySAL Queen Moran's I/Gi*, raw and BH-corrected classes, and explicit
+  missing/island/constant handling with small-sample warnings.
+- Added composite, hotspot and confidence map layers; cached JS/CSS assets,
+  escaped popups, station/port-aware labels and missing/synthetic warnings.
+- Added --refresh, --offline and --slice 0; cache fingerprints, download
+  metadata, key-safe errors, a third Overpass endpoint and count checks.
+- Removed invented template numbers; enforced synthetic test file gating and
+  flags, finite nonnegative EV data, and preserved source data flags.
+- Replaced the network-dependent resolver test with fictional polygons;
+  retained scoring tests and added Slice 1/cache/map/population tests.
+- Expanded README with formulas, assumptions, source licences, exact manual
+  work and limitations. See outputs/feasibility.md for actual verification.
