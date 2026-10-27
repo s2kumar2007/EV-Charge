@@ -15,7 +15,13 @@ def load_boundaries(force=False):
 
 def main(compare=False, national=False):
     ensure_dirs()
-    frame = load_provider(national=True) if national else load_boundaries()
+    try:
+        frame = load_provider(national=True) if national else load_boundaries()
+    except (RuntimeError, OSError, ValueError) as err:
+        command = "python src/load_boundaries.py --compare" + (" --national" if national else "")
+        print(f"PARTIAL: selected boundary provider unavailable: {err}")
+        print(f"MANUAL: run {command} in a connected terminal to cache all required provider files. The provider default has not changed.")
+        return None
     print(f"Boundaries: {len(frame)} districts; provider={config.BOUNDARY_PROVIDER}")
     print(config.BOUNDARY_RIGHTS_NOTE if config.BOUNDARY_PROVIDER == "pinned_repo" else "Retain the downloaded ADM1/ADM2 release attribution and licence.")
     if compare:
@@ -25,7 +31,7 @@ def main(compare=False, national=False):
             save_json(destination / config.BOUNDARY_COMPARISON_FILE, report)
         except (RuntimeError, OSError, ValueError) as err:
             print(f"PARTIAL: boundary comparison blocked: {err}")
-            print("MANUAL: with internet, run python src/load_boundaries.py --compare. Download both ADM1/ADM2 metadata and their gjDownloadURL files if direct access is blocked.")
+            print("MANUAL: with internet, run python src/load_boundaries.py --compare" + (" --national" if national else "") + ". Download required provider files; keep both ADM1/ADM2 metadata and their gjDownloadURL files for state selection.")
     return frame
 
 

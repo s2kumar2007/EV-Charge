@@ -152,7 +152,7 @@ def extract_rows(path, expected_names):
                        " MANUAL: install pdfplumber with python -m pip install pdfplumber, or repair/install a working pdftotext, then run python src/complete_ev_counts.py.")
 
 
-def reconcile(rows, baseline, expected_categories):
+def reconcile(rows, baseline, expected_categories, checks=None):
     """The existing measure and source categories define completeness, never guesses."""
     original_names = dict(zip(baseline.district.map(norm_key), baseline.district))
     current = None
@@ -186,7 +186,8 @@ def reconcile(rows, baseline, expected_categories):
     candidate = baseline.copy()
     candidate["extraction_status"] = "ambiguous PDF cells - not ranked"
     candidate["ev_total"] = pd.Series(float("nan"), index=candidate.index)
-    checks = {"baseline_check": [], "printed_district_totals": [], "printed_state_totals": []}
+    checks = {} if checks is None else checks
+    checks.update({"baseline_check": [], "printed_district_totals": [], "printed_state_totals": []})
     year_totals = {}
     for i, original in baseline.iterrows():
         group = parsed[parsed.district.eq(original.district)]
@@ -259,7 +260,12 @@ def main():
     # The audit is saved even when reconciliation later stops on a mismatch.
     save_json(folder / config.PUBLIC_EV_PDF_AUDIT_FILE, {"backend": backend, "source_url": config.PUBLIC_EV_SOURCE_URL,
         "source_sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "selected_year": config.PUBLIC_EV_SELECTED_YEAR, "measure": config.PUBLIC_EV_MEASURE_LABEL, "cells": audit})
-    candidate, checks = reconcile(rows, baseline, baseline_categories())
+    checks = {}
+    try:
+        candidate, checks = reconcile(rows, baseline, baseline_categories(), checks)
+    except ValueError as err:
+        save_json(folder / config.PUBLIC_EV_PDF_CHECKS_FILE, {**checks, "status": "STOP", "reason": str(err), "csv_replaced": False})
+        raise
     save_json(folder / config.PUBLIC_EV_PDF_CHECKS_FILE, checks)
     pending = baseline_path.with_suffix(".csv.tmp")
     candidate.to_csv(pending, index=False)

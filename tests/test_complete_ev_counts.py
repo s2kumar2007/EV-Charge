@@ -112,3 +112,12 @@ def test_unrecognised_district_never_inherits_previous_district():
     rows=[row("Alpha","2WN",3),row("Unknown source district","LMV",4)]
     with pytest.raises(ValueError,match="Unrecognised PDF district"):
         recovery.reconcile(rows,baseline,expected)
+
+
+def test_failed_reconciliation_retains_existing_and_extracted_audit():
+    baseline, expected = base()
+    checks = {}
+    with pytest.raises(ValueError, match="STOP"):
+        recovery.reconcile([row("Alpha", "2WN", 3), row("", "LMV", 9)], baseline, expected, checks)
+    check = checks["baseline_check"][0]
+    assert check["existing"] == 7 and check["extracted"] == 12 and check["status"] == "STOP"

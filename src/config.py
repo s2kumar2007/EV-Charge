@@ -330,3 +330,25 @@ INDIA_ACCEPTANCE_OUTPUT_FILE = "acceptance_report.json"
 INDIA_SOURCE_CANDIDATES_FILE = "national_source_candidates.json"
 INDIA_VAHAN_REPORT_URL = "https://analytics.parivahan.gov.in/analytics/vahanpublicreport"
 INDIA_EV_CANDIDATE_LAYER_URL = "https://livingatlas.esri.in/server/rest/services/India/District_wise_RTO_Vehicle_Registration/MapServer/0"
+
+# Generic accent folding preserves letters in provider transliterations.
+NAME_UNICODE_NORMALIZATION = "NFKD"
+MAP_SERVER_HOST = "127.0.0.1"
+MAP_SERVER_PORT = 8000
+MAP_SERVER_OPEN_BROWSER = True
+GOOGLE_MAPS_FALLBACK_ENABLED = True
+GOOGLE_MAPS_FALLBACK_WIDTH = 1000
+GOOGLE_MAPS_FALLBACK_HEIGHT = 900
+SUPPLIED_USER_FOLDER = "supplied_user_files"
+SUPPLIED_CENSUS_FILE = "2011-IndiaStateDist-0000.xlsx"
+SUPPLIED_STATE_FILE = "All_Stateof_India_2026-10-27_12-05-51.xlsx"
+SUPPLIED_EV_FILE = "table_data.csv"
+SUPPLIED_CENSUS_COLUMNS = {"state_code": "State", "district_code": "District", "level": "Level", "district": "Name", "area_type": "TRU", "population": "TOT_P"}
+SUPPLIED_CENSUS_DISTRICT_LEVEL = "DISTRICT"
+SUPPLIED_CENSUS_TOTAL_LABEL = "Total"
+SUPPLIED_CENSUS_YEAR = 2011
+SUPPLIED_POPULATION_CANDIDATE = "population_india_2011_candidate.csv"
+SUPPLIED_POPULATION_CROSSWALK = "population_india_2011_crosswalk_candidate.csv"
+SUPPLIED_AUDIT_REPORT = "supplied_data_audit.json"
+SUPPLIED_CENSUS_COUNTRY_LEVEL = "India"
+SUPPLIED_EV_TOTAL_LABEL = "Total"

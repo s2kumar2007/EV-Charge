@@ -4,6 +4,7 @@ import json
 import math
 import re
 import time
+import unicodedata
 from pathlib import Path
 
 import requests
@@ -25,7 +26,7 @@ def norm_key(name):
     """Compare letters only; punctuation is not a spelling correction."""
     if name is None or (isinstance(name, float) and math.isnan(name)):
         return ""
-    words = str(name).lower().strip().split()
+    words = unicodedata.normalize(config.NAME_UNICODE_NORMALIZATION, str(name)).lower().strip().split()
     while words and words[0] in config.NAME_IGNORED_LEADING_WORDS:
         words.pop(0)
     key = re.sub(r"[^a-z]", "", " ".join(words))

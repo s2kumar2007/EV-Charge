@@ -107,12 +107,14 @@ def test_inline_ui_with_fake_google_api(tmp_path):
     harness = r"""
 const vm=require('vm');const assert=require('assert');
 class Element {
- constructor(){this.textContent='';this.value='';this.handlers={};this.children=[];}
+ constructor(){this.textContent='';this.value='';this.handlers={};this.children=[];this.style={};this.attributes={};}
  appendChild(node){this.children.push(node);}
+ setAttribute(key,value){this.attributes[key]=value;}
+ getBBox(){return {x:0,y:0,width:100,height:100};}
  addEventListener(name,callback){this.handlers[name]=callback;}
 }
 const nodes={};const layers=[];
-const document={getElementById:id=>nodes[id]||(nodes[id]=new Element()),createElement:()=>new Element(),createTextNode:text=>({textContent:text})};
+const document={getElementById:id=>nodes[id]||(nodes[id]=new Element()),createElement:()=>new Element(),createElementNS:()=>new Element(),createTextNode:text=>({textContent:text})};
 class Feature {
  constructor(raw){this.raw=raw;}
  getProperty(name){return this.raw.properties[name];}
@@ -133,6 +135,10 @@ document.getElementById('chargegap-data').textContent=JSON.stringify(PAYLOAD);
 document.getElementById('chargegap-options').textContent=JSON.stringify(OPTIONS);
 const sandbox={window:{},document,google,URL,setTimeout:()=>{}};
 vm.runInNewContext(SCRIPT,sandbox);
+assert(nodes.map.children.length>0,'local SVG must render before Google loads');
+assert.strictEqual(nodes.find.disabled,false);
+nodes['district-search'].value='Same [a]';nodes.find.onclick();
+assert(nodes.selection.textContent.includes('Same'));
 sandbox.window.initChargeGapGoogleMap();
 assert(nodes.status.textContent.includes('National snapshot loaded'));
 assert.strictEqual(nodes['district-count'].textContent,2);
@@ -148,7 +154,7 @@ assert(nodes.selection.textContent.includes('Same'));
 nodes['charger-toggle'].handlers.change({target:{checked:false}});
 assert.strictEqual(layers[1].map,null);
 layers[1].listeners.click({feature:layers[1].features[0]});
-sandbox.window.gm_authFailure();assert(nodes.status.textContent.includes('could not load or authorise'));
+sandbox.window.gm_authFailure();assert(nodes.map.children.length>0);assert(nodes.status.textContent.includes('could not load or authorise'));
 console.log('Offline Google Maps UI: PASS');
 """
     harness = 'const PAYLOAD='+json.dumps(payload)+';const OPTIONS='+json.dumps(options)+';const SCRIPT='+json.dumps(script)+';\n'+harness

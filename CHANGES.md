@@ -225,3 +225,23 @@ tests/test_complete_ev_counts.py, src/import_public_tables.py, src/config.py,
 run_acceptance.py, tests/test_acceptance.py, src/load_boundaries.py,
 data/samples/official_sources/national_source_candidates.json,
 README.md, outputs/feasibility.md and CHANGES.md.
+
+
+## 2026-10-27 - Local source files and resilient national map
+
+- Read the three supplied originals. Prepared 640 Census 2011 district
+  candidates with a printed India-total check and unverified polygon suggestions.
+  The 36-row state directory supplies no district counts. Audited the EV CSV's
+  category/fuel totals; its 5,178,162 total has no district rows and is not imported.
+- Added an inline SVG national fallback with polygons, stations, search, details,
+  indicator colours, zoom/pan and toggles. Google failures retain the local view.
+  Added `python run_map.py` to start a persistent server from the user's terminal.
+- Fixed generic Unicode accent normalization for ADM1 transliterations.
+  State comparison completes: 37 pinned vs 38 geoBoundaries districts.
+  Default remains pinned; national provider files are still missing.
+- Verified both Folium maps have nonempty local JS/CSS assets (11 libraries each).
+  Tiles remain online; Google browser/API authorization is still unverified.
+- Original PDF word reader: 17 existing totals verified, nine unverified.
+  Stopped without changing EV CSV rows; raw cells/coordinates and a STOP
+  receipt are retained. State rerun retains 23 composite ranks.
+- Offline regression suite: 104 passed, 1 skipped (real PySAL Gi* integration).

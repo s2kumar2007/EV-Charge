@@ -60,3 +60,19 @@ def test_comparison_and_invalid_geometry():
     broken["shapeID"] = "duplicate"
     with pytest.raises(ValueError, match="unique"):
         providers.clean_boundaries(broken, "shapeName", "shapeID")
+
+
+def test_accents_preserve_letters_in_state_selection(monkeypatch):
+    monkeypatch.setattr(config, "STATE_NAME", "Test State")
+    districts = providers.clean_boundaries(frame(["Inside"], [box(.1,.1,.9,.9)]), "shapeName", "shapeID")
+    states = providers.clean_boundaries(frame(["Tēst Stāte"], [box(0,0,1,1)]), "shapeName", "shapeID")
+    assert providers.select_state(districts, states).district.tolist() == ["Inside"]
+
+
+def test_unavailable_national_provider_prints_exact_recovery(monkeypatch, capsys):
+    import load_boundaries as loader
+    monkeypatch.setattr(loader, "ensure_dirs", lambda: None)
+    def fail(**kwargs): raise RuntimeError("fake download unavailable")
+    monkeypatch.setattr(loader, "load_provider", fail)
+    assert loader.main(compare=True, national=True) is None
+    assert "--compare --national" in capsys.readouterr().out

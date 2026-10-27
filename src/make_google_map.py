@@ -77,7 +77,8 @@ def render_document(payload, api_key):
                "popupFields": config.GOOGLE_MAPS_POPUP_FIELDS, "chargerFields": config.GOOGLE_MAPS_CHARGER_FIELDS,
                "searchUrl": config.GOOGLE_MAPS_SEARCH_URL, "directionsUrl": config.GOOGLE_MAPS_DIRECTIONS_URL,
                "urlVersion": config.GOOGLE_MAPS_URL_VERSION, "travelMode": config.GOOGLE_MAPS_TRAVEL_MODE,
-               "note": config.GOOGLE_MAPS_NOTE}
+               "note": config.GOOGLE_MAPS_NOTE, "fallbackEnabled": config.GOOGLE_MAPS_FALLBACK_ENABLED,
+               "fallbackWidth": config.GOOGLE_MAPS_FALLBACK_WIDTH, "fallbackHeight": config.GOOGLE_MAPS_FALLBACK_HEIGHT}
     url = config.GOOGLE_MAPS_API_URL + "?" + urlencode({"key": api_key.strip(), "callback": "initChargeGapGoogleMap", "loading": "async", "v": config.GOOGLE_MAPS_API_VERSION})
     template = (Path(__file__).parent / config.GOOGLE_MAPS_TEMPLATE_FILE).read_text(encoding="utf-8")
     return template.replace("__CHARGEGAP_DATA__", safe_json(payload)).replace("__CHARGEGAP_OPTIONS__", safe_json(options)).replace("__CHARGEGAP_API_URL__", html.escape(url, quote=True))

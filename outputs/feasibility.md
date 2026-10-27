@@ -1,3 +1,43 @@
+# Latest verification - 27 October 2026
+
+This update supersedes earlier blocked-access notes below. Acceptance remains
+PARTIAL; no source values are invented or automatically disaggregated.
+
+- Browser showed ERR_CONNECTION_REFUSED, then timeout after the agent started
+  a server. Agent HTTP clients also cannot connect to localhost. Added
+  `python run_map.py` for the user's terminal and a dependency-free SVG
+  fallback. Google HTML regenerated: 735 polygons, 575 stations. Offline
+  fake-API tests cover fallback and Google UI behavior. Successful Google
+  browser rendering/authorization is not claimed.
+- All three supplied files are readable. Census 2011 has 640 district totals
+  summing to its printed India population 1,210,854,977. Candidates and unverified
+  national crosswalk suggestions are local CSVs; accepted = 0. State directory:
+  36 rows. EV CSV: combined 2025-2026 table, total 5,178,162, no district rows;
+  category/fuel sums reconcile, imported = 0.
+- Fixed accent normalization. State comparison: pinned 37, geoBoundaries 38.
+  Pinned-only names: Chengalpattu, Kanyakumari, Nilgiris. geoBoundaries-only:
+  Chengalputtu, Kanniyakumari, Mayiladuthurai, The Nilgiris. Default unchanged.
+  National comparison cannot download missing pinned state files. ADM1/ADM2
+  metadata, geometry receipts and attribution are cached.
+- Both Folium maps have all 11 JS/CSS assets local and nonempty. Tiles stay online.
+- PDF reader works: 2,720 raw cells retain PDF word coordinates. Baseline check:
+  17 PASS, nine STOP/unverified. Every baseline EV CSV row is preserved; 26
+  complete and 11 missing remain. Review raw cells/checks before replacing totals.
+- State offline run completes: 37 polygons, 220 raw/216 merged chargers,
+  33 accepted populations, 37 road/commercial observations, 23 composite ranks.
+  Moran/Gi* actual n=0, eligible=23; esda is missing. Synthetic data: NO.
+- Tests: 104 passed, 1 skipped. The skipped integration requires PySAL/esda.
+
+Manual work: run `python run_map.py` in your terminal; verify Google API rendering
+once the local view opens. Supply district-level EV rows with one explicit
+period/measure; review Census geography and the five state population mappings.
+Review the nine PDF baseline failures. Install esda and cache pinned national
+state files online, then rerun the comparison. Review charger merges, AHP
+judgments and boundary redistribution rights. Commit from your terminal if
+Git writes remain restricted to the agent.
+
+---
+
 # Current verification - 27 October 2026
 
 Acceptance: **PARTIAL**. The state CLI completes offline using real supplied

@@ -44,7 +44,7 @@ def evaluate(frames, boundary, hotspot, map_report, comparison=None, scope="stat
         if scope == "india":
             tasks.append(f"Supply data/raw/{config.INDIA_EV_FILE} using its template and dataset IDs, uniform registration period/categories, source_url, observation_date and boundary_compatible=true only after reviewing district geography. Do not turn RTO office locations into district catchment counts.")
         else:
-            tasks.append("Install pdfplumber or repair pdftotext, then run python src/complete_ev_counts.py followed by python run_all.py --offline. Existing complete EV values and printed totals must pass before replacement.")
+            tasks.append("Review the PDF word-coordinate audit and public_ev_pdf_checks.json, then run python src/complete_ev_counts.py followed by python run_all.py --offline. Any STOP must be resolved against the original PDF; preserve the CSV until every existing complete value verifies.")
     population, crosswalk = frame("population"), frame("crosswalk")
     needs = []
     if "relation" in crosswalk:
@@ -134,11 +134,16 @@ def main(root=ROOT, scope="state"):
     report = evaluate(frames, boundary, hotspot, map_report, comparison, scope)
     report["scope"] = scope
     if scope == "india":
+        supplied = read_json(output / config.SUPPLIED_AUDIT_REPORT)
+        if supplied:
+            report["checks"].append({"check": "supplied national source audit", "status": "PARTIAL",
+                "files": supplied.get("files", [])})
+            report["manual_tasks"].extend(supplied.get("manual_tasks", []))
         google_path = output / config.GOOGLE_MAPS_INDIA_FILENAME
         receipt = read_json(google_path.with_suffix(".manifest.json"))
         report["checks"].append({"check": "Google Maps national view", "status": "PARTIAL", "generated": google_path.exists() and google_path.stat().st_size > 0,
             "districts": receipt.get("districts"), "mapped_chargers": receipt.get("mapped_chargers"), "api_authorisation": "unverified; requires browser validation"})
-        report["manual_tasks"].append("Serve outputs/india over localhost, open india_google_map.html and verify Maps JavaScript API/billing/referrer authorisation in the browser. The key is kept out of this report.")
+        report["manual_tasks"].append("Run python run_map.py in your terminal and keep it open. Verify the local district view, then Maps JavaScript API/billing/referrer authorisation in the browser. The local SVG fallback does not verify Google authorization. The key is kept out of this report.")
         if report["status"] != "FAIL":
             report["status"] = "PARTIAL"
     for check in report["checks"]:

@@ -51,7 +51,10 @@ def test_national_report_keeps_browser_key_out(tmp_path, capsys):
     native=output/config.GOOGLE_MAPS_INDIA_FILENAME
     native.write_text('<script src="https://fake.invalid/?key=fake-private-key"></script>')
     native.with_suffix('.manifest.json').write_text(json.dumps({"districts":1,"mapped_chargers":0}))
+    (output/config.SUPPLIED_AUDIT_REPORT).write_text(json.dumps({"files":[{"file":"fake.xlsx","district_totals":2}],"manual_tasks":["Review fake geography"]}))
     report=acceptance.main(tmp_path,scope="india")
+    assert any(c["check"] == "supplied national source audit" for c in report["checks"])
+    assert "Review fake geography" in report["manual_tasks"]
     assert report["scope"] == "india" and report["status"] == "PARTIAL"
     assert "fake-private-key" not in json.dumps(report)
     assert "fake-private-key" not in capsys.readouterr().out

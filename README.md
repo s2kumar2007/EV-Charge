@@ -10,11 +10,12 @@ for both runners. To use the supplied geoBoundaries provider nationally, set
 `BOUNDARY_PROVIDER="geoboundaries"` and first cache its metadata/downloads online;
 the old root GeoJSON is not silently treated as the current release.
 
-Current verification: **95 passed, 1 skipped**. State run: **37 polygons,
+Current verification: **104 passed, 1 skipped**. State run: **37 polygons,
 220 raw chargers, 216 merged stations, 26 basic ranks, 33 accepted populations,
 37 road/commercial observations, 23 composite ranks**. No synthetic data.
-Acceptance is **PARTIAL**: PDF extraction, PySAL, offline map downloads and
-cross-provider comparison remain externally blocked. See `outputs/feasibility.md`.
+Acceptance is **PARTIAL**: PDF baseline verification, PySAL, national boundary
+comparison and Google browser authorization remain incomplete. Folium JS/CSS
+assets are now cached and the state provider comparison completes. See `outputs/feasibility.md`.
 
 Python 3.10+. This is a map and an auditable district comparison, with no
 forecast, optimiser or dashboard. All editable source URLs, state settings,
@@ -64,17 +65,50 @@ Tiles remain online; `MAP_TILES=None` removes the basemap. CSS fonts/images
 can still require internet; this feature caches external script/link files,
 not every resource referenced within CSS. Browser visual verification is pending.
 
+## Open the national map and inspect supplied data
+
+Run `python run_map.py` in your own PowerShell from this repository and keep
+that terminal open. It opens `http://127.0.0.1:8000/india_google_map.html`.
+Connection refused means the server is absent; it is not a Google API error.
+The agent runtime could start a server, but its browser and HTTP client could
+not connect to localhost, so a successful browser render is not yet claimed.
+
+The HTML now draws its 735 district polygons and 575 mapped stations with a
+local SVG view before Google loads. It supports district search, indicator
+colours, details, visibility switches, wheel zoom, drag and reset without a
+CDN. Google replaces it when available; Google load or authorization failure
+keeps the local view. Missing values remain grey and unranked. The fallback
+has no Google basemap; API authorization still needs browser verification.
+Regenerate with `python run_india.py --google-map-only --offline` after changes.
+
+The three originals in `data/raw/supplied_user_files/` are now readable.
+Run `python src/import_supplied_data.py` to repeat the audit:
+
+- Census workbook: 640 district totals, year 2011, population sum 1,210,854,977,
+  equal to its printed India total. Rural/urban rows are excluded. Candidates
+  and unverified polygon-name suggestions are saved under `data/raw/`; none
+  attach to newer polygons without geography review.
+- State workbook: 36 state/UT directory rows; no district population or EV counts.
+- EV CSV: combined 2025-2026 fuel/category table, printed total 5,178,162.
+  Category rows and fuel totals reconcile; district rows = 0. It cannot supply
+  district demand ranks or the state's annual 2025 registration measure.
+
+National EV and accepted population coverage remain 0/735. Obtain uniform
+ district-level registration rows with explicit period/categories and review
+Census-to-polygon geography. Never disaggregate a national total. The report
+`outputs/india/supplied_data_audit.json` records source hashes and findings.
+Original files, credentials and generated maps stay ignored.
+
 ## What you must supply or review by hand
 
-1. Part A is blocked although `data/raw/AU4552_original.pdf` exists:
-   `pdfplumber` is absent, installation cannot reach a usable package source,
-   and the bundled `pdftotext` fails to launch with Windows DLL relocation
-   error 623. In a connected terminal run `python -m pip install pdfplumber`,
-   then `python src/complete_ev_counts.py`.
-   Do not overwrite the EV CSV without auditing raw coordinates, preserving
-   all 26 complete 2025/category totals and checking printed row/state totals.
-   These cross-checks have **not** been performed. The 11 ambiguous districts
-   remain missing; no CSV values were guessed or changed.
+1. The original PDF now extracts with pdfplumber word coordinates. The baseline
+   check passes 17 existing totals but cannot verify nine: Chengalpattu, Erode,
+   Kancheepuram, Krishnagiri, Nagapattinam, Pudukkottai, Salem, Theni, Viluppuram.
+   Extraction stopped and preserved every original CSV row. Review the original
+   PDF against `data/samples/official_sources/public_ev_pdf_cells.json` and
+   `public_ev_pdf_checks.json`; do not replace values until all 26 baseline
+   totals verify. Then run `python src/complete_ev_counts.py` and the state
+   pipeline. Eleven missing districts remain missing.
 2. Review `data/samples/district_crosswalk.csv`: **Sivagangai, Thoothukudi,
    Kanniyakumari, Tiurupathur, Mayiladuthurai**. Only exact normalised names are
    `one_to_one`. Other rows are `needs_human_check`; fuzzy/geocode destinations
@@ -89,11 +123,17 @@ not every resource referenced within CSS. Browser visual verification is pending
    `python run_all.py --offline`, then `python -m pytest -q`. The current Gi*
    integration test is skipped. The real run has 23 eligible districts but
    **0 actually used** for Moran/Gi*: no substitute statistics were generated.
-4. With internet run `python src/cache_map_assets.py outputs/tn_gap_map.html`.
-   Eleven external JS/CSS URLs remain uncached in the current run.
+4. Both Folium maps now have all 11 JS/CSS dependencies cached; keep each
+   `assets/` directory beside its HTML. Basemap tiles still need internet.
+   Regenerating a map with MAP_OFFLINE_MODE=False requires recaching its assets.
 5. With internet run `python src/load_boundaries.py --compare`. Both release
    metadata and files named by `gjDownloadURL` are required for ADM2 and ADM1.
-   Actual provider comparison is blocked here; the default remains pinned.
+   State comparison succeeds: pinned 37 versus geoBoundaries 38. Only pinned:
+   Chengalpattu, Kanyakumari, Nilgiris. Only geoBoundaries: Chengalputtu,
+   Kanniyakumari, Mayiladuthurai, The Nilgiris. Name differences are not proof
+   of equal geometry. National comparison still needs missing pinned state files;
+   run `python src/load_boundaries.py --compare --national` online. The default
+   remains pinned.
    Review boundary accuracy, coverage, historical year and redistribution rights.
 6. Review charger merges in `outputs/validation_sample.csv` and provisional
    AHP judgments. Preserve review files; the pipeline writes a new timestamped
