@@ -93,7 +93,8 @@ def main(chargers=None, boundaries=None, ev_table=None, use_dedup=None):
     filename = "district_gap_scores_deduplicated.csv" if use_dedup else SCORES_CSV.name
     columns = ["district", "ev_total", "charger_count", "port_count", "gap_score", "gap_unit", "rank", "data_flag", "status",
                "raw_charger_count", "raw_port_count", "count_basis", "district_key"]
-    columns += [c for c in ("deduplicated_charger_count", "deduplicated_port_count", "population", "evs_per_100k") if c in table]
+    columns += [c for c in ("deduplicated_charger_count", "deduplicated_port_count", "population", "evs_per_100k",
+                           "ev_year", "ev_measure", "source_url", "source_date") if c in table]
     table[columns].to_csv(OUTPUTS / filename, index=False)
     geo = boundaries[["district_key", "geometry"]].merge(table, on="district_key", validate="one_to_one")
     target = PROCESSED / "districts_scored_deduplicated.geojson" if use_dedup else SCORED_GEOJSON

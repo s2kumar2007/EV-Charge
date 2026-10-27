@@ -93,6 +93,9 @@ def test_map_and_output_contract(monkeypatch, tmp_path):
     chargers = pd.DataFrame({"source": ["OSM"], "source_id": ["node/1"], "name": ["Test <station>"], "operator": ["Test energy"],
                              "latitude": [.5], "longitude": [.5], "ports": [2], "ports_known": [True]})
     ev = pd.DataFrame({"district_key": b.district_key, "ev_total": [30, 80, np.nan], "population": [300, 400, np.nan], "data_flag": ["synthetic", "real", "missing"]})
+    ev["source_date"] = "2020-01-01"
+    ev["ev_year"] = 2020
+    ev["ev_measure"] = "fictional annual registrations for map tests"
     basic = build_scores.main(chargers, b, ev, use_dedup=False)
     population = pd.DataFrame({"district_key": b.district_key, "population": [300, 400, np.nan], "population_source": ["fake"] * 3})
     osm = pd.DataFrame({"district_key": b.district_key, "road_km_per_km2": [1, 3, np.nan], "commercial_per_km2": [2, 8, np.nan]})

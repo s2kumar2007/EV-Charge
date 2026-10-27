@@ -175,3 +175,20 @@ MAP_NOTE_CSS = "position:fixed;bottom:10px;left:10px;z-index:9999;background:whi
 MAP_ASSET_WARNING_CSS = "position:fixed;top:0;left:0;z-index:9999;background:white"
 PRIVATE_PARAMETER_KEYS = {"key", "api_key", "token"}
 NOMINATIM_POLICY_URL = "https://operations.osmfoundation.org/policies/nominatim/"
+
+# ---- Public tables collected from official documents ---------------------
+PUBLIC_EV_SOURCE_URL = "https://sansad.in/getFile/loksabhaquestions/annex/187/AU4552_wCyeso.pdf?source=pqals"
+PUBLIC_EV_SOURCE_DATE = "2026-03-19"
+PUBLIC_EV_YEARS = [2023, 2024, 2025]
+PUBLIC_EV_SELECTED_YEAR = 2025
+PUBLIC_EV_TABLE_FIRST_LINE = 135
+PUBLIC_EV_TABLE_LAST_LINE = 718
+PUBLIC_EV_CATEGORY_CODES = ["2WIC", "2WN", "2WT", "3WIC", "3WN", "3WT", "4WIC", "HGV", "HMV", "HPV", "LGV", "LMV", "LPV", "MGV", "MMV", "MPV", "OTH"]
+PUBLIC_EV_EXTRACT_FILES = ["parliament_ev_web_extract.json", "public_sources_search.json"]
+PUBLIC_EV_DESCRIPTION = "EV input: official 2025 NEW registrations (not cumulative fleet), published 19 March 2026. Ambiguous PDF cells remain missing."
+PUBLIC_POPULATION_SOURCE_URL = "https://des.tn.gov.in/sites/default/files/2025-07/2.VITAL%20STATISTICS.pdf"
+PUBLIC_POPULATION_YEAR = 2022
+PUBLIC_POPULATION_FIRST_LINE = 30
+PUBLIC_POPULATION_LAST_LINE = 67
+NAME_IGNORED_LEADING_WORDS = ["the"]  # Generic articles, never district-specific aliases.
+PUBLIC_SOURCE_SNAPSHOT_DIR = "official_sources"

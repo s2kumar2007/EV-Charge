@@ -38,6 +38,11 @@ def polygon_style(fill, synthetic=False):
 def add_polygon_layer(m, districts, name, fields, style, show=True):
     # Escape labels supplied by CSVs before inserting them into popup HTML.
     view = districts.copy()
+    # GeoJSON readers may recognise source dates as timestamps. Leaflet needs
+    # JSON strings, not Python timestamp objects, even for non-popup columns.
+    for column in view.columns:
+        if pd.api.types.is_datetime64_any_dtype(view[column]):
+            view[column] = view[column].map(lambda value: value.isoformat() if pd.notna(value) else None)
     popup_fields = []
     for field in fields:
         if field not in view:
@@ -98,7 +103,7 @@ def main(include_slice1=True):
         return polygon_style(fill, "synthetic" in str(p["data_flag"]).lower())
 
     add_polygon_layer(m, districts, "Districts (gap score)",
-                      ["district", "ev_total", "charger_count", "port_count", "gap_score", "gap_unit", "rank", "data_flag", "status"], basic_style)
+                      ["district", "ev_total", "ev_year", "ev_measure", "charger_count", "port_count", "gap_score", "gap_unit", "rank", "data_flag", "status"], basic_style)
     scale.add_to(m)
     raw_layer = folium.FeatureGroup(name="Chargers (raw source records)", show=not include_slice1)
     for row in raw.itertuples():
@@ -148,6 +153,11 @@ def main(include_slice1=True):
              f"Missing EV data: {missing}; synthetic: {synthetic}; excluded from composite: {excluded}.",
              "Grey: no data; purple: no chargers; dashed: synthetic; Gi*: red hot / blue cold, FDR corrected.",
              "Few districts: hotspots are indicative, not conclusive. Basemap tiles need internet."]
+    if "ev_measure" in districts:
+        for measure in districts.ev_measure.dropna().unique():
+            notes.append(f"EV observation: {measure}")
+        if "ev_year" in districts:
+            notes.append("EV observation years: " + ", ".join(map(str, districts.ev_year.dropna().unique())))
     if synthetic or config.USE_SYNTHETIC_TEST_DATA:
         notes.append("SYNTHETIC TEST DATA IN USE - do not use these results in the submission.")
     m.get_root().html.add_child(folium.Element(f'<div style="{config.MAP_NOTE_CSS}">' + "<br>".join(html.escape(note) for note in notes) + "</div>"))

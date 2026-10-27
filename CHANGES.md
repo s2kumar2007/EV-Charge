@@ -74,3 +74,29 @@
 - `tests/test_resolver.py`
 - `tests/test_scores.py`
 - `tests/test_slice1.py`
+
+## 2026-10-27 - Collect official source tables directly
+
+- Collected MoRTH's district/category annual EV registrations from Lok Sabha
+  answer 4552 (19 March 2026), preserving 2025 observation meaning and sources.
+- Added a real committed fallback: 37 district rows, 26 complete totals;
+  ambiguous PDF cells leave 11 districts missing rather than guessing.
+- Collected 38 official 2022 population estimates from Tamil Nadu DES; retained
+  them as candidates only because boundary compatibility is not verified.
+- Cached source extracts in raw and added committed text snapshots for
+  reproducibility. Added import_public_tables.py and five offline tests.
+- Carried EV observation year/measure/source through scoring and onto the map.
+- Added configurable generic article normalisation without spelling aliases.
+- Fixed Folium serialization of GeoJSON-inferred source-date timestamps and
+  added a regression case with source-date metadata.
+- Verification: 41 tests passed, 1 PySAL integration test skipped because the
+  dependency install remains blocked. See feasibility.md for current coverage.
+
+Additional/updated files for this data-collection change:
+`src/import_public_tables.py`, `src/config.py`, `src/utils.py`,
+`src/load_vahan.py`, `src/build_scores.py`, `src/make_map.py`,
+`tests/test_public_tables.py`, `tests/test_pipeline.py`, `README.md`,
+`CHANGES.md`, `outputs/feasibility.md`,
+`data/samples/vahan_tn_ev_by_district.csv`,
+`data/samples/population_official_estimates_candidate.csv`, and the three
+JSON source-text snapshots in `data/samples/official_sources/`.

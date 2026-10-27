@@ -1,80 +1,73 @@
-# Feasibility and verification - 27 October 2026
+# Current data collection and feasibility - 27 October 2026
 
-Both slices are implemented, but a fully live, submission-ready result is
-**not yet verified**. Missing inputs have not been invented.
+The code for both slices is implemented. A partial real-data run is now
+available; full live/composite/hotspot verification is still incomplete.
 
-## Executed here
+## Data actually collected
 
-- Python 3.11.9 on Windows; source compiles.
-- Offline tests: 36 passed, 1 skipped. The skipped test is the real PySAL Gi*
-  3x3 integration test; `libpysal`/`esda` are unavailable on this machine.
-- Installing those packages was attempted and failed with DNS resolution
-  errors. Do not treat the skipped test as a pass. Install requirements and
-  rerun the complete suite on a connected machine.
-- Both-slice offline pipeline completed using the pre-existing real OSM and
-  boundary caches. Those source observations were not newly downloaded here.
-- The pinned boundary file contains 37 districts, with mixed historic metadata;
-  newest districts may be missing. Boundary count is not hardcoded in logic.
-- 220 raw records = 74 inside + 146 outside boundary districts.
-- At the configured 40 m radius: 216 merged stations = 73 inside + 143 outside;
-  4 raw records removed statewide/search-box-wide. Only one removed raw record
-  was inside the state polygons. 57/220 raw records have known port counts.
-- Radius sensitivity (search box, including outside points): 10 m -> 218,
-  25 m -> 216, 40 m -> 216, 75 m -> 215, 100 m -> 215 stations. This is evidence
-  of sensitivity, not proof that 40 m is optimal.
-- No real VAHAN export is present. All 37 districts have missing EV totals and
-  remain unranked. Synthetic flags/generation are OFF. No population, road,
-  commercial or composite values have been fabricated; no Moran/Gi* statistic
-  is reported for these all-missing indices.
-- Required outputs, audits, validation sample and Folium HTML are generated.
-  Map content/layer contracts are tested with fictional data. Browser visual
-  rendering is not independently verified here.
-- Eleven Folium/Branca JS/CSS libraries are not yet cached; this HTML currently
-  needs internet to load those dependencies. It says so visibly. After a
-  successful online run they are cached/copied beside the HTML. Basemap tiles
-  still require internet by design, with no bulk tile downloads.
+| Data | Coverage | Use in current run |
+|---|---|---|
+| Official MoRTH/VAHAN district-category EV table, Lok Sabha answer 4552, published 19 March 2026 | 2025 annual NEW registrations; 37 source districts | 26 complete district totals; 11 excluded for ambiguous PDF cells |
+| Tamil Nadu DES Statistical Handbook 2022-23, table 2.1 | 38 district mid-year 2022 population estimates | Candidate file only; geography compatibility unverified |
+| Pinned third-party district polygons | 37 polygons from pre-existing cache | Used with district-coverage and rights caveats |
+| OSM charger observations | 220 raw records from pre-existing cache; no verified retrieval date | Used, explicitly labelled cached rather than refreshed |
+| OSM roads/commercial nodes | Live download not available | Missing; never replaced by zeros |
 
-## Free-source feasibility
+The 26 complete EV totals sum to **141,606** annual registrations. This is a
+partial-district sum, **not a statewide total**, active vehicle fleet, or
+cumulative registrations. The named source contains all 37 rows, but some
+numeric cells lost separators in PDF text extraction. The importer records
+raw cells and refuses affected district totals. No synthetic EV values are used.
 
-OSM/Overpass supplies a reproducible live-fetch route for chargers, roads and
-commercial nodes with a primary and two fallback endpoints, retry messages and
-query-specific caches. Live refresh was attempted from this environment; DNS
-resolution failed. A cache-based run is not described as a fresh fetch.
+EV source:
+https://sansad.in/getFile/loksabhaquestions/annex/187/AU4552_wCyeso.pdf?source=pqals
 
-No paid API is required. Optional OCM uses a user's free developer key.
-Nominatim reconciliation is cached, single-threaded and limited to one request
-per second, intended for small one-time name reconciliation. Review its usage
-policy linked in README before operating it repeatedly.
+Population candidate:
+https://des.tn.gov.in/sites/default/files/2025-07/2.VITAL%20STATISTICS.pdf
 
-Population candidate: IndiaSet's Census 2011 district compilation
-(https://huggingface.co/datasets/indiaset/census-2011), publisher-labelled
-CC-BY-4.0. The published schema and free paginated JSON API documentation were
-reviewed. Actual dataset download and this dataset's endpoint response remain
-unverified because DNS blocked local downloads. URL/licence/citation live in
-config. Historic counts are not used until boundary compatibility is explicitly
-verified; manual `data/raw/population.csv` is the fallback. No population source
-has been used to produce actual per-capita scores in this run.
+Source text was collected through web retrieval and cached locally. Original
+PDF bytes and readable page-image bytes were not available through this path.
+The text snapshots are committed under data/samples/official_sources and a
+parser rebuilds the CSVs; no district values are typed into calculation logic.
+Government tables are citable factual sources; an explicit redistribution
+licence has not been established. They are not labelled CC-BY without evidence.
 
-The retained boundary repository has no explicit dataset licence visible and
-its README describes curation for personal usage. Its geometry should not be
-represented as cleared for public redistribution. Resolve source rights and
-check current district accuracy before public release. OSM data are ODbL;
-OCM records can have individual provider terms; VAHAN reuse terms need checking.
+The 2022 population values are official published estimates, not generated
+synthetic figures. They stay out of the index until district geography is
+checked. Names alone cannot prove matching boundaries. Source names and
+spelling are preserved in the candidate file.
 
-## Remaining hand work / release checks
+## Verification
 
-1. On a connected machine, install requirements and run `python -m pytest -q
-   -rs`; the PySAL integration test must execute, not skip.
-2. Supply the real VAHAN export, including source date and filters. This cannot
-   be replaced by an assumed public free VAHAN API or invented counts.
-3. Supply/review population totals compatible with the boundary vintage.
-4. Run `python run_all.py --refresh` to obtain current OSM data, population
-   snapshots and browser libraries. Then repeat with `--offline` and inspect
-   map layers in a browser. Validate live Overpass/Hugging Face/OCM responses.
-5. Review fuzzy/geocoded matches, merge audit and human validation sample.
-   Record expert AHP judgments and justify modelling settings if presenting
-   them as authoritative. Resolve boundary data licence/accuracy.
+- Python 3.11.9 on Windows; source compilation succeeds.
+- Latest offline suite: **41 passed, 1 skipped**. The skipped case is the true
+  PySAL Gi* integration test; libpysal/esda remain unavailable because direct
+  package downloads fail DNS. It has not been counted as a pass.
+- Both-slice pipeline regenerates the partial historical gap map, source
+  audit and CSVs. Twenty-six basic ranks are based on the collected EV data;
+  eleven remain missing. Composite indicators remain incomplete/unranked.
+- A real-data source-date timestamp exposed a Folium serialization issue; it
+  was fixed and a metadata-bearing map regression test now passes.
+- Raw charger reconciliation: 220 = 74 inside + 146 outside.
+- Deduplicated reconciliation: 216 = 73 inside + 143 outside at 40 m.
+- 57/220 raw records have known ports. Radius sensitivity and human validation
+  samples are generated; no claim of externally validated precision is made.
+- Folium HTML is generated and its content/layer contracts tested. Eleven
+  JS/CSS libraries are not cached; internet is needed to display this preview.
+  Browser visual rendering has not been verified. After a connected run the
+  vector map libraries can be cached, while basemap tiles remain online.
 
-No grid-headroom, forecast, optimiser or dashboard was added. Confidence and
-weight/radius choices are transparent editable modelling assumptions; none are
-presented as measured data or a guarantee of station correctness.
+## Concrete remaining limits
+
+Direct Python requests to official PDF and package hosts still fail DNS.
+Web retrieval successfully collected official table text, but its Overpass
+request was inaccessible. Consequently current charger refresh, road geometry,
+commercial nodes, package installation and full browser inspection are not
+complete. No fabricated substitutes or replacement spatial statistics were used.
+
+The default collected EV input is historical annual adoption, not live fleet
+pressure. For a full result, resolve ambiguous source cells from a readable
+original PDF, obtain compatible population geography, obtain OSM road/POI
+responses, install the PySAL dependencies and execute its integration test.
+Boundary redistribution rights and the human merge-validation sample also
+remain to be checked. No paid API is required for the implemented default route.

@@ -125,6 +125,11 @@ def load_vahan(boundaries, geocode_fn=None):
     if len(used) and used.groupby("district_key").size().max() > 1:
         print("  note: several VAHAN rows belong to one district; their values were added together.")
     agg = {"ev_total": "sum"}
+    # Carry the observation year/meaning onto the map; registrations in one
+    # year must never be presented as today's cumulative vehicle fleet.
+    for column in ("ev_year", "ev_measure", "source_url", "source_date"):
+        if column in used:
+            agg[column] = lambda values: "|".join(sorted(set(values.dropna().astype(str))))
     if "population" in used.columns:
         agg["population"] = "max"
     if "data_flag" in used.columns:

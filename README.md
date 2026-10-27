@@ -48,9 +48,12 @@ failed, the map displays an explicit internet-required banner.
 
 ## What you must supply or review by hand
 
-1. Export real VAHAN EV totals and save `data/raw/vahan_tn_ev_by_district.csv`.
-   Record the export date, vehicle/fuel filters, time window and whether totals
-   mean cumulative registrations. A stable public unauthenticated VAHAN API is
+1. The repository now includes collected official **2025 annual EV
+   registrations** for 37 source districts: 26 complete totals and 11 left
+   empty because the PDF extraction has ambiguous count separators. No manual
+   export is needed to run that partial historical snapshot. For current or
+   cumulative registrations, supply `data/raw/vahan_tn_ev_by_district.csv` and
+   record export date, vehicle/fuel filters and time window. A stable public unauthenticated VAHAN API is
    not assumed, and this project does not bypass login or CAPTCHA. Registration
    totals do not measure road traffic, usage, or the active vehicle fleet.
 2. Check `data/processed/vahan_name_resolution.csv`, especially fuzzy/geocoded
@@ -81,7 +84,7 @@ failed, the map displays an explicit internet-required banner.
 | Optional charger records | [OpenChargeMap](https://openchargemap.org/site/develop/api), only with `OCM_API_KEY` | Free developer access; retain attribution and check the data provider's individual terms. Current developer/terms pages may require login. Not required for the default run. |
 | Name geocoding | [OSM Nominatim](https://nominatim.openstreetmap.org) | ODbL; see [mandatory usage policy](https://operations.osmfoundation.org/policies/nominatim/). Single thread, cached answers, identifying User-Agent, at most one request per second. Intended for a small one-time district/RTO reconciliation, not scheduled bulk geocoding. |
 | Population candidate | [IndiaSet Census 2011](https://huggingface.co/datasets/indiaset/census-2011) | Publisher labels compilation CC-BY-4.0, derived from Census of India 2011. Citation: Jaiswal, Ansuman (2026), *India Census 2011 - District Level*. Historic geography is not silently applied to newer polygons. |
-| EV registrations | User's VAHAN export | Verify VAHAN export/reuse terms and retain provenance. No EV data are bundled as real observations. |
+| EV registrations | [MoRTH Lok Sabha answer 4552, 19 March 2026](https://sansad.in/getFile/loksabhaquestions/annex/187/AU4552_wCyeso.pdf?source=pqals), or user VAHAN export | Official 2025 annual-registration table collected as a partial real fallback. Not a live feed or fleet total. Retain attribution; explicit redistribution licence has not been established. |
 
 Population downloads use Hugging Face's documented free
 [`/rows` API](https://huggingface.co/docs/dataset-viewer/rows), paginating the
@@ -106,7 +109,8 @@ sums. Missing totals are calculated from supplied type columns; do not omit
 categories accidentally. Negative/infinite totals are rejected.
 
 If the raw file is absent, `VAHAN_SAMPLE_FILE` selects an optional committed
-sample in `data/samples/`. There is currently **no real sample export**.
+sample in `data/samples/`. The collected real fallback is an official 2025
+annual-registration snapshot, not a current or cumulative VAHAN export.
 Districts without EV counts stay empty and unranked, even if chargers exist.
 Zero EVs are an observation; missing EVs are not zero. Rows assigned to one
 district have their EV totals added. A repeated population is taken once
@@ -302,3 +306,50 @@ pipeline handles missing inputs; it does not demonstrate EV demand rankings.
 - Boundary data rights and current geometry accuracy require verification.
 - Grid headroom, actual utilization, traffic, charger uptime and future demand
   are absent. No forecasts or engineering deployment recommendations follow.
+
+
+## Official data collected on 27 October 2026
+
+`data/samples/vahan_tn_ev_by_district.csv` contains the collected official
+2025 annual-registration table. Its `ev_total` sums only source categories
+with unambiguous numeric separators. If any category has ambiguous cells,
+that district's total stays blank. There are 37 source districts, 26 complete
+totals (141,606 registrations across those 26 only) and 11 exclusions; **this
+sum is not a statewide total**. All source district names resolve; the one
+fuzzy match is logged. Generic leading articles are normalised by a configured
+rule, with no district-specific spelling list.
+
+The complete retrieved source text is cached in `data/raw/` and reproducible
+text snapshots are committed in `data/samples/official_sources/`. The actual
+PDF bytes were not downloaded; these files are web-retrieved PDF text, clearly
+labelled as such. Rebuild the collected tables with:
+
+```powershell
+python src/import_public_tables.py
+python run_all.py --offline
+```
+
+`data/processed/public_ev_category_extraction_audit.csv` records each original
+category cell and its extraction status. `outputs/data_collection_manifest.json`
+records the source URLs, coverage and limitations. Original source PDF page
+images were not available as actual image bytes through the retrieval tool;
+ambiguous cells have not been manually guessed or treated as zero.
+
+`data/samples/population_official_estimates_candidate.csv` contains 38 official
+**2022 mid-year population estimates**, collected from the Tamil Nadu DES
+Statistical Handbook 2022-23, table 2.1 (printed page 84):
+https://des.tn.gov.in/sites/default/files/2025-07/2.VITAL%20STATISTICS.pdf.
+These are official estimates, not synthetic values generated by the project
+and not Census 2011 enumeration. They are **candidates only**, not loaded into
+scores: newer district splits and expanded districts can differ from the
+pinned polygon geography. Source spelling is preserved. The handbook's
+explicit redistribution licence has not been established; do not re-label it
+as CC-BY-4.0. The previously documented IndiaSet source remains a separate
+historic candidate.
+
+Current direct Python downloads still fail DNS resolution. The web retrieval
+route collected these official tables, but could not retrieve Overpass JSON.
+Road/POI indicators and live charger refresh remain unavailable here. The
+map therefore uses the existing charger cache, displays 26 historical basic
+ranks, and leaves the composite unranked. This is a partial real-data run,
+not proof that every requested source or live service has been validated.
