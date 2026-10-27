@@ -71,6 +71,10 @@ def read_verified_input(boundaries, path, value, audit_path):
             raise ValueError("EV measurement and period cannot be blank")
         if len(observed[["ev_measure","period_start","period_end"]].drop_duplicates()) > 1:
             raise ValueError("National ranking cannot mix EV measurement types or registration periods")
+    flags = table.get("data_flag", pd.Series("real",index=table.index)).fillna("real").astype(str)
+    if not config.ALLOW_SYNTHETIC:
+        table.loc[flags.str.contains("synthetic",case=False),"resolution_status"] = "synthetic input disabled"
+    table["data_flag"] = flags
     table.to_csv(audit_path,index=False)
     used = table[table.resolution_status.eq("accepted")]
     result = boundaries[["district_key"]].merge(used.drop(columns="resolution_status"),on="district_key",how="left",validate="one_to_one")
@@ -117,5 +121,6 @@ def scores(boundaries, ev, assigned, raw_assigned):
     table = boundaries[["district","district_key"]].merge(ev,on="district_key",validate="one_to_one")
     table["charger_count"],table["port_count"] = count_units(assigned,table.district_key)
     table["raw_charger_count"],table["raw_port_count"] = count_units(raw_assigned,table.district_key)
-    table["data_flag"] = np.where(table.ev_total.notna(),"real","missing")
+    flags = table.get("data_flag",pd.Series("real",index=table.index)).fillna("real")
+    table["data_flag"] = flags.where(table.ev_total.notna(),"missing")
     return rank_districts(table)

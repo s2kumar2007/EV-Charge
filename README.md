@@ -353,3 +353,43 @@ Road/POI indicators and live charger refresh remain unavailable here. The
 map therefore uses the existing charger cache, displays 26 historical basic
 ranks, and leaves the composite unranked. This is a partial real-data run,
 not proof that every requested source or live service has been validated.
+
+## India-wide build
+
+Run `python run_india.py --offline` using the supplied national GeoJSON and
+India PBF at this repository root. Open outputs/india/india_gap_map.html.
+Run `python run_india.py --download-latest` to stream the current free
+Geofabrik extract before processing; network access is required. Interrupted
+refreshes preserve the previous validated file. `--refresh` re-extracts a
+local snapshot. This is snapshot refresh, not live charger uptime or VAHAN.
+
+State outputs remain unchanged. National outputs are under outputs/india and
+data/processed/india. The Southern Zone extract overlaps India and is excluded.
+Supply coverage is displayed even when EV/population inputs are missing.
+No demand rankings or substitute statistics are invented.
+
+National inputs: data/raw/vahan_india_ev_by_district.csv and population_india.csv.
+Generated header-only templates specify the required columns. Use polygon IDs
+from outputs/india/district_directory.csv, source_url, observation_date and
+boundary_compatible=true only after checking geography. EV inputs also require
+ev_measure, period_start, period_end. Mixed periods, duplicate IDs, invalid
+numbers and unverified geography are rejected or audited. District names are
+not unique nationally; dataset IDs are not official LGD codes.
+
+PBF extraction caches use source SHA-256 and reader version. The reader handles
+nodes/dense nodes, ways and charger relations, failing explicitly on unsupported
+nested relations or incomplete coordinates. National deduplication uses 3D
+Earth-centred candidates and ellipsoidal distances. Road/area calculations use
+each district's estimated local UTM zone. Only map geometry is simplified.
+
+The run manifest records source hashes, actual OSM header timestamp, counts and
+missing-data coverage. Audit outputs include merge membership, radius
+sensitivity, validation sample, rejected inputs, roads/POIs, composite sensitivity
+and hotspot statistics. Review merges manually before claiming accuracy.
+
+The supplied boundary file has 735 polygons. Retrieved geoBoundaries metadata
+describes 2021 geography, lists 736 units and specifies ODbL 1.0. Review that
+coverage discrepancy before presenting complete current district coverage.
+Sources and configurable URLs: geoBoundaries India ADM2 metadata, Geofabrik
+India downloads, and the OpenStreetMap PBF format specification. OSM is ODbL.
+National EV/population totals are still separate, unavailable inputs here.

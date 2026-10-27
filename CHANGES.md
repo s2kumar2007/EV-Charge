@@ -100,3 +100,15 @@ Additional/updated files for this data-collection change:
 `data/samples/vahan_tn_ev_by_district.csv`,
 `data/samples/population_official_estimates_candidate.csv`, and the three
 JSON source-text snapshots in `data/samples/official_sources/`.
+
+## 2026-10-27 - National pipeline
+
+Added run_india.py, national binary extraction and fingerprinted cache,
+dataset-ID input audits, synthetic gating, geodesic deduplication,
+district-local road calculations, supply coverage map and source manifest.
+Added safe streamed current-snapshot refresh and offline regression tests.
+State outputs remain available. National EV/population inputs stay missing.
+Files: .gitignore, requirements.txt, src/config.py, src/dedupe_chargers.py,
+src/extract_india.py, src/india_data.py, src/pbf_reader.py, src/refresh_india.py,
+src/make_map.py, run_india.py, tests/test_india.py, README.md, CHANGES.md,
+outputs/feasibility.md and the two national input templates.

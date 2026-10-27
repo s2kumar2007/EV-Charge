@@ -122,3 +122,79 @@ def test_geodesic_dedup_across_zone_border():
 def test_national_roads_and_empty_counts():
     result=india_data.osm_indicators(boundaries(),{'elements':[{'geometry':[{'lon':.5,'lat':.5},{'lon':1.5,'lat':.5}]}]}, {'elements':[]})
     assert result.road_km_per_km2.gt(0).all() and result.commercial_count.eq(0).all()
+
+def test_national_runner_keeps_state_outputs(tmp_path,monkeypatch):
+    import sys
+    from pathlib import Path
+    sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+    import run_india
+    from extract_india import parse_osm
+    raw_dir=tmp_path/'raw'; raw_dir.mkdir()
+    output=tmp_path/'outputs'; output.mkdir()
+    state_map=output/'tn_gap_map.html'; state_map.write_text('existing state result')
+    processed=tmp_path/'processed'; processed.mkdir()
+    b=boundaries()
+    boundary_file=tmp_path/config.INDIA_BOUNDARY_FILE
+    b.rename(columns={'district':'shapeName','district_key':'shapeID'}).to_file(boundary_file,driver='GeoJSON')
+    charger=parse_osm({'elements':[{'type':'node','id':1,'lat':.5,'lon':.5,'tags':{'name':'Invented charger'}}]})
+    fake={'source':{'file':'invented.pbf','sha256':'test-only'},'chargers':charger,'roads':{'elements':[]},'pois':{'elements':[]}}
+    for key,value in [('ROOT',tmp_path),('RAW',raw_dir),('OUTPUTS',output),('PROCESSED',processed)]:
+        monkeypatch.setattr(run_india,key,value)
+    monkeypatch.setattr(run_india,'extract',lambda **kwargs:fake)
+    monkeypatch.setattr(india_data,'load_boundaries',lambda:b)
+    monkeypatch.setattr(config,'CACHE_MAP_ASSETS',False)
+    result=run_india.main(['--offline'])
+    assert state_map.read_text()=='existing state result'
+    assert result['district_count']==2 and result['raw_chargers']=={'fetched':1,'inside':1,'outside':0}
+    assert result['districts_with_ev']==0 and result['composite_ranked']==0
+    document=(output/config.INDIA_OUTPUT_FOLDER/config.INDIA_MAP_FILE).read_text()
+    assert 'Charger coverage (supply only)' in document and 'Composite index' in document
+    table=pd.read_csv(output/config.INDIA_OUTPUT_FOLDER/'district_gap_scores.csv')
+    assert table['rank'].isna().all() and table.charger_count.sum()==1
+
+def test_synthetic_national_input_blocked(tmp_path):
+    path=tmp_path/'population.csv'
+    pd.DataFrame({'district_key':['id1'],'population':[99],'source_url':['test'],
+      'observation_date':['2025'],'boundary_compatible':[True],'data_flag':['synthetic']}).to_csv(path,index=False)
+    result=india_data.read_verified_input(boundaries(),path,'population',tmp_path/'audit.csv')
+    assert result.population.isna().all()
+
+
+def test_pbf_header_timestamp(tmp_path):
+    # Header metadata uses actual epoch seconds, rather than a filename date.
+    path=tmp_path/'misleading-name.pbf'
+    payload=field(4,b'OsmSchema-V0.6')+scalar(32,0)
+    blob=field(1,payload)
+    header=field(1,b'OSMHeader')+scalar(3,len(blob))
+    path.write_bytes(struct.pack('>I',len(header))+header+blob)
+    assert pbf_reader.header_metadata(path)['snapshot_utc']=='1970-01-01T00:00:00+00:00'
+
+def test_live_refresh_preserves_previous_file(tmp_path,monkeypatch):
+    import refresh_india
+    import requests
+    destination=tmp_path/'current.pbf'; destination.write_bytes(b'previous-valid-data')
+    monkeypatch.setattr(config,'OFFLINE',False)
+    monkeypatch.setattr(config,'RETRY_ATTEMPTS',1)
+    def failed(*args,**kwargs):
+        raise requests.ConnectionError('invented failure')
+    monkeypatch.setattr(refresh_india.requests,'get',failed)
+    with pytest.raises(RuntimeError,match='preserved'):
+        refresh_india.download_latest(destination)
+    assert destination.read_bytes()==b'previous-valid-data'
+
+
+def test_live_refresh_streams_and_validates(tmp_path,monkeypatch):
+    import refresh_india
+    destination=tmp_path/'current.pbf'
+    class Response:
+        headers={'Content-Length':'6'}
+        def __enter__(self): return self
+        def __exit__(self,*args): pass
+        def raise_for_status(self): pass
+        def iter_content(self,chunk_size): return iter([b'abc',b'def'])
+    monkeypatch.setattr(config,'OFFLINE',False)
+    monkeypatch.setattr(config,'INDIA_LIVE_MIN_BYTES',1)
+    monkeypatch.setattr(refresh_india.requests,'get',lambda *a,**k:Response())
+    monkeypatch.setattr(refresh_india,'header_metadata',lambda p:{'snapshot_utc':'test timestamp'})
+    assert refresh_india.download_latest(destination)==destination
+    assert destination.read_bytes()==b'abcdef'

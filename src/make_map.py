@@ -81,7 +81,7 @@ def cache_map_assets(document):
     return document, missing
 
 
-def main(include_slice1=True):
+def main(include_slice1=True, coverage=None):
     ensure_dirs()
     districts = gpd.read_file(PROCESSED / "districts_scored.geojson")
     raw = pd.read_csv(PROCESSED / "chargers_assigned.csv").fillna({"name": "", "operator": ""})
@@ -103,8 +103,17 @@ def main(include_slice1=True):
         return polygon_style(fill, "synthetic" in str(p["data_flag"]).lower())
 
     add_polygon_layer(m, districts, "Districts (gap score)",
-                      ["district", "ev_total", "ev_year", "ev_measure", "charger_count", "port_count", "gap_score", "gap_unit", "rank", "data_flag", "status"], basic_style)
+                      ["district", "district_key", "ev_total", "ev_year", "ev_measure", "charger_count", "port_count", "gap_score", "gap_unit", "rank", "data_flag", "status"], basic_style, show=coverage is None)
     scale.add_to(m)
+    if coverage is not None:
+        cover = districts[["district", "district_key", "geometry"]].merge(
+            coverage[["district_key", "charger_count", "port_count"]], on="district_key", validate="one_to_one")
+        cover_scale = colour_scale(cover.charger_count, config.MAP_PALETTE, "Mapped deduplicated stations (supply only)")
+        def coverage_style(feature):
+            return polygon_style(cover_scale(min(feature["properties"]["charger_count"], cover_scale.vmax)))
+        add_polygon_layer(m, cover, "Charger coverage (supply only)",
+                          ["district", "district_key", "charger_count", "port_count"], coverage_style)
+        cover_scale.add_to(m)
     raw_layer = folium.FeatureGroup(name="Chargers (raw source records)", show=not include_slice1)
     for row in raw.itertuples():
         popup = f"<b>{html.escape(str(row.name) or '(unnamed)')}</b><br>Operator: {html.escape(str(row.operator) or 'unknown')}<br>Source: {html.escape(str(row.source))}"
