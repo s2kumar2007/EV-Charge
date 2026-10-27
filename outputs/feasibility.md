@@ -92,3 +92,10 @@ as a measured demand-gap ranking. State outputs remain unchanged. National
 count reconciliation and source hashes are recorded in outputs/india/run_manifest.json
 when the full run completes. The map explicitly warns about missing inputs
 and uncached display libraries where relevant.
+
+The full national CLI run completed successfully. All 735 road/POI district
+calculations finished. Counts reconcile: raw 610 = 609 inside + 1 outside;
+merged 576 = 575 inside + 1 outside. The national HTML map and run manifest
+were generated. Eleven JS/CSS dependencies are uncached, so the map currently
+requires internet to render. Browser visual verification remains incomplete;
+HTML structure and inline JavaScript syntax were checked separately.

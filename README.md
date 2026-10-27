@@ -1,6 +1,10 @@
 # ChargeGap India - Slices 0 and 1
 
-Techfest 2026-27, IIT Bombay: EV infrastructure map for one Indian state.
+Techfest 2026-27, IIT Bombay: EV infrastructure mapping for India, with the original state pipeline preserved.
+
+National entry point: `python run_india.py --offline` (supplied data) or
+`python run_india.py --download-latest` (current free OSM snapshot).
+Open `outputs/india/india_gap_map.html`. See the India-wide build section below.
 Python 3.10+. This is a map and an auditable district comparison, with no
 forecast, optimiser or dashboard. All editable source URLs, state settings,
 thresholds, colours, weighting judgments and seeds are in `src/config.py`.
