@@ -15,3 +15,6 @@ outputs/*
 !outputs/.gitkeep
 !outputs/feasibility.md
 .test_tmp/
+# Large supplied source snapshots stay local; provenance is recorded in manifests.
+*.osm.pbf
+geoBoundaries-IND-ADM2.geojson

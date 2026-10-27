@@ -44,7 +44,7 @@ def confidence(components):
     return sum(weights[k] * components[k] for k in weights) / sum(weights.values())
 
 
-def deduplicate(chargers, radius=None):
+def deduplicate(chargers, radius=None, geodesic=False):
     """Distance components are DBSCAN with min_samples=1; labels refine merges.
 
     The final groups must pass every pairwise distance and label check. This
@@ -60,11 +60,28 @@ def deduplicate(chargers, radius=None):
         raise ValueError("Duplicate source IDs in fetched records; review the source response.")
     raw["ports_known"] = raw["ports_known"].astype(str).str.lower().isin(["true", "1"])
     points = gpd.GeoDataFrame(raw, geometry=gpd.points_from_xy(raw.longitude, raw.latitude), crs=config.WGS84)
-    metric_crs = points.estimate_utm_crs()
-    if metric_crs is None:
+    if geodesic:
+        from pyproj import Geod
+        geod = Geod(ellps="WGS84")
+        # Geocentric metres avoid choosing one UTM zone for the whole country.
+        # A 3D transform needs explicit zero-height coordinates.
+        from pyproj import Transformer
+        transform = Transformer.from_crs(config.WGS84, config.INDIA_GEOCENTRIC_CRS, always_xy=True)
+        xyz = transform.transform(raw.longitude.to_numpy(), raw.latitude.to_numpy(), np.zeros(len(raw)))
+        xy = np.column_stack(xyz)
+        metric_crs = None
+    else:
+        metric_crs = points.estimate_utm_crs()
+    if metric_crs is None and not geodesic:
         raise ValueError("Could not choose a metric CRS for deduplication.")
-    metric = points.to_crs(metric_crs)
-    xy = np.column_stack([metric.geometry.x, metric.geometry.y])
+    if not geodesic:
+        metric = points.to_crs(metric_crs)
+        xy = np.column_stack([metric.geometry.x, metric.geometry.y])
+    def distance(a, b):
+        if geodesic:
+            return geod.inv(raw.iloc[a].longitude, raw.iloc[a].latitude,
+                            raw.iloc[b].longitude, raw.iloc[b].latitude)[2]
+        return np.linalg.norm(xy[a] - xy[b])
     pairs = sorted(cKDTree(xy).query_pairs(radius))
     # Connected components give the coarse distance clusters without another library.
     parent = list(range(len(raw)))
@@ -85,8 +102,8 @@ def deduplicate(chargers, radius=None):
         refined = []
         for i in members:
             for group in refined:
-                if all(np.linalg.norm(xy[i] - xy[j]) <= radius and
-                       compatible(raw.iloc[i], raw.iloc[j], np.linalg.norm(xy[i] - xy[j]), radius)
+                if all(distance(i, j) <= radius and
+                       compatible(raw.iloc[i], raw.iloc[j], distance(i, j), radius)
                        for j in group):
                     group.append(i)
                     break
@@ -96,9 +113,14 @@ def deduplicate(chargers, radius=None):
     merged, audit = [], []
     for number, members in enumerate(groups, start=1):
         rows = raw.iloc[members]
-        centre = xy[members].mean(axis=0)
-        spread = float(np.linalg.norm(xy[members] - centre, axis=1).max())
-        location = gpd.GeoSeries(gpd.points_from_xy([centre[0]], [centre[1]]), crs=metric_crs).to_crs(config.WGS84).iloc[0]
+        if geodesic:
+            from shapely.geometry import Point
+            location = Point(float(rows.longitude.mean()), float(rows.latitude.mean()))
+            spread = float(max(geod.inv(location.x, location.y, r.longitude, r.latitude)[2] for r in rows.itertuples()))
+        else:
+            centre = xy[members].mean(axis=0)
+            spread = float(np.linalg.norm(xy[members] - centre, axis=1).max())
+            location = gpd.GeoSeries(gpd.points_from_xy([centre[0]], [centre[1]]), crs=metric_crs).to_crs(config.WGS84).iloc[0]
         sources = sorted(set(rows.source))
         known = rows.loc[rows.ports_known, "ports"]
         # Longest nonempty label is deterministic and usually the most informative.

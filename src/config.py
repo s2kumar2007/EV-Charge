@@ -192,3 +192,26 @@ PUBLIC_POPULATION_FIRST_LINE = 30
 PUBLIC_POPULATION_LAST_LINE = 67
 NAME_IGNORED_LEADING_WORDS = ["the"]  # Generic articles, never district-specific aliases.
 PUBLIC_SOURCE_SNAPSHOT_DIR = "official_sources"
+
+# India-wide local run; state settings above remain unchanged.
+INDIA_BOUNDARY_FILE = "geoBoundaries-IND-ADM2.geojson"
+INDIA_PBF_FILE = "india-261025.osm.pbf"
+INDIA_BOUNDARY_NAME = "shapeName"
+INDIA_BOUNDARY_ID = "shapeID"  # Dataset identifier, not an official LGD code.
+INDIA_OUTPUT_FOLDER = "india"
+INDIA_EV_FILE = "vahan_india_ev_by_district.csv"
+INDIA_POPULATION_FILE = "population_india.csv"
+INDIA_MAP_FILE = "india_gap_map.html"
+INDIA_ROAD_CLASSES = {"trunk", "primary"}
+INDIA_COMMERCIAL_AMENITIES = {"fuel", "restaurant", "marketplace"}
+INDIA_CHARGER_AMENITY = "charging_station"
+INDIA_OSM_SOURCE = "OSM"
+INDIA_PBF_MAX_BLOB_BYTES = 64 * 1024 * 1024
+INDIA_PBF_PROGRESS_BLOCKS = 500
+INDIA_PBF_COORDINATE_SCALE = 1e-9
+INDIA_PBF_DEFAULT_GRANULARITY = 100
+INDIA_READER_VERSION = 1
+INDIA_MAP_SIMPLIFY_M = 250
+INDIA_MAP_NOTE = "India OSM snapshot; OSM contributors (ODbL). Supplied geoBoundaries district polygons; verify release year/licence. Missing EV/population data are never estimated. Charger presence does not prove public access, uptime or capacity."
+INDIA_GEOCENTRIC_CRS = "EPSG:4978"  # Global Earth-centred metres, for neighbour candidates.
+INDIA_DISTRICT_PROGRESS = 50
