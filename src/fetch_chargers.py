@@ -14,7 +14,7 @@ import pandas as pd
 from dotenv import load_dotenv
 
 import config
-from utils import PROCESSED, RAW, ROOT, ensure_dirs, request_with_retry
+from utils import PROCESSED, RAW, ROOT, ensure_dirs, request_with_retry, fetch_overpass
 
 OSM_CACHE = RAW / f"osm_chargers_{config.STATE_SLUG}.json"
 OCM_CACHE = RAW / f"ocm_chargers_{config.STATE_SLUG}.json"
@@ -23,30 +23,13 @@ CHARGERS_OUT = PROCESSED / "chargers_raw.csv"
 
 def overpass_query(bounds):
     west, south, east, north = bounds
-    return (f"[out:json][timeout:{config.OVERPASS_TIMEOUT_S}][bbox:{south},{west},{north},{east}];\n"
-            '(node["amenity"="charging_station"];way["amenity"="charging_station"];'
-            'relation["amenity"="charging_station"];);\nout center tags;')
+    filters = config.OSM_CHARGER_FILTER
+    return (f"[out:json][timeout:{config.OVERPASS_TIMEOUT_S}][bbox:{south},{west},{north},{east}];"
+            f"(node{filters};way{filters};relation{filters};);out center tags;")
 
 
 def fetch_osm_raw(bounds, force=False):
-    if OSM_CACHE.exists() and not force:
-        print(f"  OSM: using cached file {OSM_CACHE.name}")
-        return json.loads(OSM_CACHE.read_text(encoding="utf-8"))
-    last_error = None
-    for endpoint in config.OVERPASS_ENDPOINTS:
-        try:
-            print(f"  OSM: asking {endpoint} (can take up to a minute) ...")
-            response = request_with_retry("POST", endpoint, data={"data": overpass_query(bounds)},
-                                          timeout=config.OVERPASS_TIMEOUT_S + 60)
-            data = response.json()
-            if "elements" not in data:
-                raise ValueError(f"unexpected answer: {str(data)[:200]}")
-            OSM_CACHE.write_text(json.dumps(data), encoding="utf-8")
-            return data
-        except (RuntimeError, ValueError) as err:
-            last_error = err
-            print(f"  OSM: {endpoint} failed -> {err}")
-    raise RuntimeError(f"Could not fetch OpenStreetMap chargers from any Overpass server. Last error: {last_error}")
+    return fetch_overpass(overpass_query(bounds), "osm_chargers", force=force)
 
 
 def parse_ports(val):
@@ -56,8 +39,8 @@ def parse_ports(val):
     A valid positive integer returns (val, True).
     Missing, invalid, zero or negative values default to (1, False).
     """
-    if val is None or pd.isna(val):
-        return 1, False
+    if isinstance(val, (bool, np.bool_)) or val is None or pd.isna(val):
+        return config.DEFAULT_PORTS, False
     try:
         if isinstance(val, str):
             val = val.strip()
@@ -67,12 +50,12 @@ def parse_ports(val):
         elif isinstance(val, float) and val.is_integer():
             num = int(val)
         else:
-            return 1, False
+            return config.DEFAULT_PORTS, False
         if num > 0:
             return num, True
     except (ValueError, TypeError, OverflowError):
         pass
-    return 1, False
+    return config.DEFAULT_PORTS, False
 
 
 def parse_osm(data):
@@ -102,7 +85,7 @@ def fetch_ocm_raw(api_key, bounds, force=False):
     params = {"output": "json", "boundingbox": f"({south},{west}),({north},{east})",
               "maxresults": config.OCM_MAX_RESULTS, "compact": "false", "verbose": "false", "key": api_key}
     print("  OCM: requesting chargers ...")
-    data = request_with_retry("GET", config.OCM_URL, params=params, timeout=120).json()
+    data = request_with_retry("GET", config.OCM_URL, params=params, timeout=config.NETWORK_TIMEOUT_S).json()
     OCM_CACHE.write_text(json.dumps(data), encoding="utf-8")
     return data
 
@@ -140,6 +123,8 @@ def fetch_chargers(boundaries, force=False):
 
     chargers = pd.DataFrame(rows, columns=["source", "name", "operator", "latitude", "longitude",
                                            "source_id", "ports", "ports_known"])
+    if len(chargers) and not np.isfinite(chargers[["latitude", "longitude"]].astype(float)).all().all():
+        raise ValueError("Charger source contains invalid coordinates.")
     chargers.to_csv(CHARGERS_OUT, index=False)
     return chargers
 

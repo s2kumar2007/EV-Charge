@@ -58,3 +58,111 @@ NO_CHARGER_COLOUR = "#6a1b9a"
 NO_DATA_COLOUR = "#bdbdbd"
 SOURCE_COLOURS = {"OSM": "#1565c0", "OCM": "#2e7d32"}
 UNKNOWN_SOURCE_COLOUR = "#000000"
+
+# ---- Shared settings -----------------------------------------------------
+WGS84 = "EPSG:4326"
+NETWORK_TIMEOUT_S = 120
+NETWORK_TIMEOUT_PADDING_S = 60
+ERROR_PREVIEW_CHARS = 200
+DEFAULT_PORTS = 1
+PER_100K = 100000
+METRES_PER_KM = 1000
+SCORE_DECIMALS = 6
+VAHAN_FILE = "vahan_tn_ev_by_district.csv"
+VAHAN_TEMPLATE = "vahan_tn_ev_by_district_TEMPLATE.csv"
+SYNTHETIC_TEST_FILENAME = "vahan_tn_ev_by_district_SYNTHETIC_TEST.csv"
+VEHICLE_COLUMNS = ["two_wheeler", "three_wheeler", "four_wheeler", "bus"]
+TEMPLATE_COLUMNS = ["district", "ev_total", *VEHICLE_COLUMNS, "population", "data_flag"]
+COUNTRY_NAME = "India"
+RTO_BRACKETS_PATTERN = r"\([^)]*\)|\[[^]]*\]"
+RTO_CODE_PATTERN = r"\b[A-Za-z]{2}[- ]?\d{1,3}\b"
+RTO_WORD_PATTERN = r"\b(RTO|RTA|regional transport office)\b"
+MAP_FILENAME = "tn_gap_map.html"
+REFRESH_DOWNLOADS = False  # --refresh updates downloads, never cached geocoder answers.
+OFFLINE = False           # --offline forbids every uncached network request.
+OSM_CHARGER_FILTER = '["amenity"="charging_station"]'
+OSM_ROAD_FILTER = '["highway"~"^(trunk|primary)$"]'
+OSM_POI_FILTERS = ['["shop"]', '["amenity"~"^(fuel|restaurant|marketplace)$"]']
+OVERPASS_ENDPOINTS += ["https://overpass.private.coffee/api/interpreter"]
+
+# ---- Deduplication: editable assumptions, not observed facts --------------
+DEDUP_ENABLED = True
+DEDUP_RADIUS_M = 40.0
+DEDUP_RADII_M = [10.0, 25.0, 40.0, 75.0, 100.0]
+DEDUP_NAME_SIMILARITY = 0.80
+DEDUP_OPERATOR_SIMILARITY = 0.85
+DEDUP_UNNAMED_RADIUS_FRACTION = 0.25
+# Equal heuristic weights are editable. Confidence is NOT a probability.
+CONFIDENCE_WEIGHTS = {"sources": 1.0, "name": 1.0, "operator": 1.0, "ports": 1.0, "spread": 1.0}
+CONFIDENCE_SOURCE_TARGET = 2
+VALIDATION_SAMPLE_SIZE = 30
+VALIDATION_SEED = 2026
+VALIDATION_ACCEPTED_TRUE = ["true", "yes", "1"]
+VALIDATION_ACCEPTED_FALSE = ["false", "no", "0"]
+
+# ---- Population: open Census 2011 compilation ----------------------------
+POPULATION_DATASET = "indiaset/census-2011"
+POPULATION_CITATION = "Jaiswal, Ansuman (2026), India Census 2011 - District Level, IndiaSet"
+POPULATION_SOURCE_URL = f"https://huggingface.co/datasets/{POPULATION_DATASET}"
+POPULATION_URL = "https://datasets-server.huggingface.co/rows"
+POPULATION_LICENCE = "CC-BY-4.0 (compilation); source: Census of India 2011"
+POPULATION_YEAR = 2011
+POPULATION_API_CONFIG = "default"
+POPULATION_API_SPLIT = "train"
+POPULATION_PAGE_SIZE = 100
+POPULATION_STATE_COLUMN = "state_name"
+POPULATION_DISTRICT_COLUMN = "district_name"
+POPULATION_COUNT_COLUMN = "pop_total"
+POPULATION_MANUAL_FILE = "population.csv"
+# Do not silently apply pre-split populations to newer district polygons.
+# Verify boundary compatibility before enabling downloaded historic values.
+POPULATION_BOUNDARIES_VERIFIED = False
+
+# ---- Composite index: higher values mean greater demand in every column --
+INDICATORS = ["ev_pressure", "evs_per_100k", "road_km_per_km2", "commercial_per_km2"]
+INDICATOR_SOURCES = {
+    "ev_pressure": "VAHAN EV total / selected OSM + optional OCM stations or ports",
+    "evs_per_100k": "VAHAN EV total / compatible district population * 100000",
+    "road_km_per_km2": "OSM trunk/primary ways clipped to district / district area",
+    "commercial_per_km2": "OSM shop or fuel/restaurant/marketplace nodes / district area",
+}
+SCALING_METHOD = "minmax"  # or robust: clip at data quantiles, then min-max
+ROBUST_QUANTILES = [0.05, 0.95]
+NUMERIC_TOLERANCE = 1e-10
+AHP_MATRIX = [[1.0 for _ in INDICATORS] for _ in INDICATORS]
+AHP_RANDOM_INDEX = 0.90  # Saaty's random consistency index for four indicators.
+AHP_MAX_CONSISTENCY_RATIO = 0.10
+WEIGHT_RUNS = 1000
+WEIGHT_SEED = 2026
+DIRICHLET_CONCENTRATION = 50.0
+TOP_K = 5
+REPORT_TOP_N = 5
+
+# ---- Spatial statistics --------------------------------------------------
+HOTSPOT_PERMUTATIONS = 999
+HOTSPOT_SEED = 2026
+HOTSPOT_CONFIDENCE_LEVELS = [90, 95, 99]
+HOTSPOT_MIN_OBSERVATIONS = 3
+HOTSPOT_SMALL_N = 50
+HOTSPOT_JOBS = 1
+HOTSPOT_ISLAND_WEIGHT = 0
+HOTSPOT_TWO_SIDED_MULTIPLIER = 2.0  # double the folded permutation tail
+
+# ---- Presentation settings -----------------------------------------------
+MAP_PALETTE = ["#ffffcc", "#fd8d3c", "#bd0026"]
+CONFIDENCE_PALETTE = ["#d73027", "#fee08b", "#1a9850"]
+HOT_COLOUR = "#d73027"
+COLD_COLOUR = "#4575b4"
+NOT_SIGNIFICANT_COLOUR = "#eeeeee"
+OUTLINE_COLOUR = "#333333"
+HIGHLIGHT_COLOUR = "#000000"
+OUTLINE_WEIGHT = 1
+HIGHLIGHT_WEIGHT = 3
+POLYGON_OPACITY = 0.75
+MARKER_RADIUS = 3
+MARKER_OPACITY = 0.9
+POPUP_MAX_WIDTH = 400
+SYNTHETIC_DASH = "6,4"
+COLOUR_CONSTANT_SPAN = 1.0
+MAP_SOURCE_NOTE = "OSM contributors (ODbL); optional OpenChargeMap (provider terms); VAHAN (manual export); third-party boundaries. Population: Census 2011 compilation (CC-BY-4.0), only after boundary review."
+BOUNDARY_LICENCE = "No explicit data licence found in repository; verify permission before redistribution."

@@ -16,7 +16,7 @@ def load_boundaries(force=False):
     ensure_dirs()
     if force or not RAW_FILE.exists():
         print(f"  downloading boundaries from {config.BOUNDARY_URL}")
-        RAW_FILE.write_bytes(request_with_retry("GET", config.BOUNDARY_URL, timeout=120).content)
+        RAW_FILE.write_bytes(request_with_retry("GET", config.BOUNDARY_URL, timeout=config.NETWORK_TIMEOUT_S).content)
 
     gdf = gpd.read_file(RAW_FILE)
     column = config.BOUNDARY_DISTRICT_COLUMN
@@ -24,10 +24,14 @@ def load_boundaries(force=False):
         raise RuntimeError(f"Column '{column}' not found in the boundary file. Found: {list(gdf.columns)}")
 
     gdf = gdf.rename(columns={column: "district"})[["district", "geometry"]]
-    gdf = gdf.to_crs(4326) if gdf.crs is not None else gdf.set_crs(4326)
+    gdf = gdf.to_crs(config.WGS84) if gdf.crs is not None else gdf.set_crs(config.WGS84)
     gdf["geometry"] = gdf.geometry.make_valid()        # repair slightly broken polygons
     gdf["district_key"] = gdf["district"].map(norm_key)
-    if gdf["district_key"].duplicated().any():
+    if gdf.geometry.is_empty.any() or gdf.geometry.isna().any():
+        raise RuntimeError("Boundary file contains empty geometry after repair.")
+    if not gdf.geom_type.isin(["Polygon", "MultiPolygon"]).all():
+        raise RuntimeError("Boundary repair produced non-polygon geometry; review the source.")
+    if (gdf["district_key"] == "").any() or gdf["district_key"].duplicated().any():
         raise RuntimeError("Two boundary districts share the same name key - check the data.")
     gdf = gdf.sort_values("district").reset_index(drop=True)
     gdf.to_file(CLEAN_OUT, driver="GeoJSON")

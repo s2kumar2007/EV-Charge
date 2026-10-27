@@ -1,6 +1,13 @@
-geopandas>=1.0
-pandas>=2.0
-shapely>=2.0
-requests>=2.31
-folium>=0.15
-python-dotenv>=1.0
+# Runtime and scientific dependencies, compatible with Python 3.10+.
+geopandas>=1.0,<2
+pandas>=2.0,<3
+numpy>=1.26,<3
+shapely>=2.0,<3
+requests>=2.31,<3
+folium>=0.15,<1
+branca>=0.7,<1
+python-dotenv>=1.0,<2
+scipy>=1.12,<2
+libpysal>=4.12,<5
+esda>=2.6,<3
+pytest>=8,<10

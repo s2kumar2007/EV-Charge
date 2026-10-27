@@ -16,11 +16,11 @@ import config
 from resolve_districts import resolve_names
 from utils import PROCESSED, RAW, ROOT, SAMPLES, ensure_dirs
 
-RAW_VAHAN_FILE = RAW / "vahan_tn_ev_by_district.csv"
-TEMPLATE_FILE = RAW / "vahan_tn_ev_by_district_TEMPLATE.csv"
-SYNTHETIC_TEST_FILE = SAMPLES / "vahan_tn_ev_by_district_SYNTHETIC_TEST.csv"
+RAW_VAHAN_FILE = RAW / config.VAHAN_FILE
+TEMPLATE_FILE = RAW / config.VAHAN_TEMPLATE
+SYNTHETIC_TEST_FILE = SAMPLES / config.SYNTHETIC_TEST_FILENAME
 RESOLUTION_LOG = PROCESSED / "vahan_name_resolution.csv"
-TYPE_COLUMNS = ["two_wheeler", "three_wheeler", "four_wheeler", "bus"]
+TYPE_COLUMNS = config.VEHICLE_COLUMNS
 
 
 def get_vahan_source():
@@ -43,6 +43,11 @@ def get_vahan_source():
     else:
         sample_path = SAMPLES / sample_candidate.name
 
+    if sample_path.name == config.SYNTHETIC_TEST_FILENAME:
+        if not config.USE_SYNTHETIC_TEST_DATA:
+            raise ValueError("Synthetic test file is blocked by USE_SYNTHETIC_TEST_DATA=False.")
+        return sample_path, str(sample_path), True
+
     if sample_path.exists():
         return sample_path, f"data/samples/{sample_path.name}", False
 
@@ -53,11 +58,8 @@ def get_vahan_source():
 
 
 def write_template():
-    if TEMPLATE_FILE.exists():
-        return
-    pd.DataFrame([{"district": "EXAMPLE", "ev_total": 1000, "two_wheeler": 700, "three_wheeler": 100,
-                   "four_wheeler": 190, "bus": 10, "population": 1000000}]).to_csv(TEMPLATE_FILE, index=False)
-    print(f"  template written -> {TEMPLATE_FILE.name}. Use a 'district' OR an 'rto' column.")
+    ensure_dirs()
+    pd.DataFrame(columns=config.TEMPLATE_COLUMNS).to_csv(TEMPLATE_FILE, index=False)
 
 
 def _numbers(series):
@@ -92,6 +94,11 @@ def read_vahan_file():
         df.loc[fill, "ev_total"] = type_sum[fill]
     if "ev_total" not in df.columns:
         raise ValueError(f"{source_path.name} needs an 'ev_total' column (or the vehicle-type columns).")
+    if is_synthetic_test:
+        df["data_flag"] = "synthetic"
+    for column in ["ev_total", "population"]:
+        if column in df and (df[column].dropna() < 0).any():
+            raise ValueError(f"Negative {column} in VAHAN input; fix the export.")
     return df, name_col
 
 
@@ -100,6 +107,7 @@ def load_vahan(boundaries, geocode_fn=None):
     Return (table, resolution). The table has ONE row per boundary district:
     district_key, ev_total (empty if unknown), data_flag ('real' / 'synthetic' / 'missing'), and 'population' if given.
     """
+    ensure_dirs()
     df, name_col = read_vahan_file()
     resolution = resolve_names(df[name_col].dropna().tolist(), boundaries,
                                kind="rto" if name_col == "rto" else "district", geocode_fn=geocode_fn)
@@ -118,7 +126,7 @@ def load_vahan(boundaries, geocode_fn=None):
     if "population" in used.columns:
         agg["population"] = "max"
     if "data_flag" in used.columns:     # a file may mark its own rows as synthetic; keep that mark
-        agg["data_flag"] = lambda s: "synthetic" if (s.astype(str).str.strip().str.lower() == "synthetic").any() else "real"
+        agg["data_flag"] = lambda s: "synthetic" if (s.astype(str).str.strip().str.lower() == "synthetic").any() else "|".join(sorted(set(s.dropna().astype(str))))
     real = used.groupby("district_key", as_index=False).agg(agg)
     if "data_flag" not in real.columns:
         real["data_flag"] = "real"
@@ -130,9 +138,10 @@ def load_vahan(boundaries, geocode_fn=None):
 
     if missing.any():
         names = boundaries.set_index("district_key").loc[table.loc[missing, "district_key"], "district"].tolist()
-        if config.ALLOW_SYNTHETIC and len(real):
+        observed = real[real["data_flag"] != "synthetic"]
+        if config.ALLOW_SYNTHETIC and len(observed):
             rng = np.random.default_rng(config.SYNTHETIC_SEED)
-            low, high = int(real["ev_total"].min()), int(real["ev_total"].max())
+            low, high = int(observed["ev_total"].min()), int(observed["ev_total"].max())
             table.loc[missing, "ev_total"] = rng.integers(low, high + 1, size=int(missing.sum()))
             table.loc[missing, "data_flag"] = "synthetic"
             print(f"  [WARNING] ALLOW_SYNTHETIC is on: {len(names)} district(s) got flagged synthetic values: {names}")

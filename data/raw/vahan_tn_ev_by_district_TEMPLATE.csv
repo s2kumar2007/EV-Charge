@@ -1,2 +1,1 @@
-district,ev_total,two_wheeler,three_wheeler,four_wheeler,bus,population
-EXAMPLE,1000,700,100,190,10,1000000
+district,ev_total,two_wheeler,three_wheeler,four_wheeler,bus,population,data_flag
