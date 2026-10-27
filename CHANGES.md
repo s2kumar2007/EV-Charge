@@ -42,3 +42,35 @@
   retained scoring tests and added Slice 1/cache/map/population tests.
 - Expanded README with formulas, assumptions, source licences, exact manual
   work and limitations. See outputs/feasibility.md for actual verification.
+
+### Complete changed-file list (29 files)
+
+- `.env.example`
+- `.gitignore`
+- `CHANGES.md`
+- `README.md`
+- `checks.py`
+- `data/raw/vahan_tn_ev_by_district_TEMPLATE.csv`
+- `outputs/feasibility.md`
+- `pytest.ini`
+- `requirements.txt`
+- `run_all.py`
+- `src/build_scores.py`
+- `src/config.py`
+- `src/dedupe_chargers.py`
+- `src/fetch_chargers.py`
+- `src/fetch_indicators.py`
+- `src/gap_index.py`
+- `src/hotspots.py`
+- `src/load_boundaries.py`
+- `src/load_population.py`
+- `src/load_vahan.py`
+- `src/make_map.py`
+- `src/resolve_districts.py`
+- `src/utils.py`
+- `src/validate_chargers.py`
+- `tests/conftest.py`
+- `tests/test_pipeline.py`
+- `tests/test_resolver.py`
+- `tests/test_scores.py`
+- `tests/test_slice1.py`
