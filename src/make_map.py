@@ -10,6 +10,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import config
+from map_links import google_links
 from utils import OUTPUTS, PROCESSED, RAW, ensure_dirs, request_with_retry
 
 MAP_HTML = OUTPUTS / config.MAP_FILENAME
@@ -117,6 +118,7 @@ def main(include_slice1=True, coverage=None):
     raw_layer = folium.FeatureGroup(name="Chargers (raw source records)", show=not include_slice1)
     for row in raw.itertuples():
         popup = f"<b>{html.escape(str(row.name) or '(unnamed)')}</b><br>Operator: {html.escape(str(row.operator) or 'unknown')}<br>Source: {html.escape(str(row.source))}"
+        popup += google_links(row.latitude, row.longitude)
         folium.CircleMarker([row.latitude, row.longitude], radius=config.MARKER_RADIUS,
                             color=config.SOURCE_COLOURS.get(row.source, config.UNKNOWN_SOURCE_COLOUR),
                             weight=config.OUTLINE_WEIGHT, fill=True, fill_opacity=config.MARKER_OPACITY,
@@ -150,6 +152,7 @@ def main(include_slice1=True, coverage=None):
             layer = folium.FeatureGroup(name="Chargers (deduplicated, coloured by confidence)")
             for row in merged[merged.district.notna()].itertuples():
                 popup = "<br>".join(f"{key}: {format_value(getattr(row, key))}" for key in ["name", "operator", "sources", "n_source_records", "ports", "ports_known", "confidence"])
+                popup += google_links(row.latitude, row.longitude)
                 folium.CircleMarker([row.latitude, row.longitude], radius=config.MARKER_RADIUS, color=confidence_scale(row.confidence),
                                     weight=config.OUTLINE_WEIGHT, fill=True, fill_opacity=config.MARKER_OPACITY,
                                     popup=folium.Popup(popup, max_width=config.POPUP_MAX_WIDTH)).add_to(layer)

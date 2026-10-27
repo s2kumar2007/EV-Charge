@@ -18,3 +18,4 @@ outputs/*
 # Large supplied source snapshots stay local; provenance is recorded in manifests.
 *.osm.pbf
 geoBoundaries-IND-ADM2.geojson
+.deps_wheels/

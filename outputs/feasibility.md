@@ -99,3 +99,14 @@ merged 576 = 575 inside + 1 outside. The national HTML map and run manifest
 were generated. Eleven JS/CSS dependencies are uncached, so the map currently
 requires internet to render. Browser visual verification remains incomplete;
 HTML structure and inline JavaScript syntax were checked separately.
+
+## External verification retry and Google Maps links
+
+55 tests pass, with 1 PySAL integration skip. The regular PySAL installation
+was denied by Windows permissions; repository-local installation could not
+fetch usable packages. Live extract, map-library and official Census download
+requests timed out. These external checks remain incomplete. A national
+population source was identified, but its 2011 geography still requires a
+crosswalk to the supplied newer polygons. National EV totals remain unavailable.
+Google Maps links were implemented using existing charger coordinates, without
+paid APIs, and the national map was regenerated with the missing-assets banner.

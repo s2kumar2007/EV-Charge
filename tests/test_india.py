@@ -198,3 +198,15 @@ def test_live_refresh_streams_and_validates(tmp_path,monkeypatch):
     monkeypatch.setattr(refresh_india,'header_metadata',lambda p:{'snapshot_utc':'test timestamp'})
     assert refresh_india.download_latest(destination)==destination
     assert destination.read_bytes()==b'abcdef'
+
+def test_google_map_links_use_source_coordinates(monkeypatch):
+    from map_links import google_links
+    from urllib.parse import parse_qs,urlsplit
+    import html,re
+    links=google_links(12.5,76.25)
+    urls=[html.unescape(value) for value in re.findall(r'href="([^"]+)"',links)]
+    assert parse_qs(urlsplit(urls[0]).query)['query']==['12.5,76.25']
+    assert parse_qs(urlsplit(urls[1]).query)['destination']==['12.5,76.25']
+    assert all('key=' not in url for url in urls)
+    monkeypatch.setattr(config,'GOOGLE_MAPS_LINKS_ENABLED',False)
+    assert google_links(12.5,76.25)==''

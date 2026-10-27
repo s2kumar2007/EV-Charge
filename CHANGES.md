@@ -112,3 +112,17 @@ Files: .gitignore, requirements.txt, src/config.py, src/dedupe_chargers.py,
 src/extract_india.py, src/india_data.py, src/pbf_reader.py, src/refresh_india.py,
 src/make_map.py, run_india.py, tests/test_india.py, README.md, CHANGES.md,
 outputs/feasibility.md and the two national input templates.
+
+## Google Maps link integration and external verification retry
+
+- Added configurable, API-key-free Google Maps search/directions links from
+  actual charger coordinates, URL encoding, safe external-link attributes
+  and a regression test. Regenerated the national map.
+- Retried PySAL installation: public package downloads were observed, but
+  installation into the Windows user-packages directory was denied. The
+  repository-local retry and cache recovery did not supply usable wheels.
+- Retried the national extract, map assets and official Census workbook:
+  direct requests timed out. No successful live refresh or offline-library
+  verification is claimed. National missing values remain missing.
+- Changed .gitignore, src/config.py, src/map_links.py, src/make_map.py,
+  tests/test_india.py, README.md, CHANGES.md and outputs/feasibility.md.

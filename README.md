@@ -397,3 +397,23 @@ coverage discrepancy before presenting complete current district coverage.
 Sources and configurable URLs: geoBoundaries India ADM2 metadata, Geofabrik
 India downloads, and the OpenStreetMap PBF format specification. OSM is ODbL.
 National EV/population totals are still separate, unavailable inputs here.
+
+## Google Maps links and remaining external inputs
+
+Charger popups now offer Open in Google Maps and Directions. These use the
+existing OSM/OCM coordinates and Google Maps URLs, without an API key or paid
+API calls. They open only when clicked. Toggle GOOGLE_MAPS_LINKS_ENABLED in
+src/config.py; endpoints and travel mode are editable there.
+
+An embedded Maps JavaScript API map and Places API require credentials and
+billing. Places data has storage/display restrictions and is not used as a
+cached source for this OSM analysis. Google Maps does not replace district
+EV registration or population data. Documentation checked:
+https://developers.google.com/maps/documentation/urls/get-started
+https://developers.google.com/maps/documentation/javascript/usage-and-billing
+https://developers.google.com/maps/documentation/places/web-service/policies
+
+The official national Census 2011 workbook URL is now recorded in config.
+It remains historical candidate geography, not automatically compatible with
+the supplied 2021 district polygons. RTO data also needs a verified administrative
+crosswalk; office-point geocoding cannot establish a catchment population.
