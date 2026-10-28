@@ -201,6 +201,8 @@ if __name__ == "__main__":
 
 def test_missing_pysal_leaves_actual_usage_zero(monkeypatch):
     monkeypatch.setitem(sys.modules, "libpysal", None)
+    # A preceding integration test may already have imported the weights module.
+    monkeypatch.setitem(sys.modules, "libpysal.weights", None)
     b = gpd.GeoDataFrame({"district": ["A", "B", "C"], "district_key": ["a", "b", "c"]},
         geometry=[box(x, 0, x+1, 1) for x in range(3)], crs=config.WGS84)
     result, metadata = hotspots.analyse_hotspots(b, pd.DataFrame({"district_key": b.district_key, "composite_score": [1, 2, 3]}))

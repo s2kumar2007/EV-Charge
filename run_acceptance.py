@@ -73,7 +73,10 @@ def evaluate(frames, boundary, hotspot, map_report, comparison=None, scope="stat
     add("Moran I and Gi*", "PASS" if hotspot.get("I") is not None and gi_n > 0 else "PARTIAL", moran_I=hotspot.get("I"), moran_n=moran_n,
         gistar_n=gi_n, eligible=hotspot.get("n_eligible"), warning="Few districts: indicative, not conclusive" if moran_n < config.HOTSPOT_SMALL_N else hotspot.get("warning"), reason=hotspot.get("reason"))
     if hotspot.get("I") is None:
-        tasks.append(f"Install python -m pip install libpysal esda in a connected terminal and rerun {pipeline_command} after completing indicator inputs; no statistic is substituted.")
+        if ranked < config.HOTSPOT_MIN_OBSERVATIONS:
+            tasks.append(f"Complete verified indicator inputs before rerunning {pipeline_command}; too few ranked districts are available for spatial statistics.")
+        else:
+            tasks.append(f"Run {pipeline_command} using the project virtual environment with libpysal/esda installed; no statistic is substituted.")
     map_exists = map_report is not None and map_report.get("generated", True)
     offline = bool(map_report and map_report.get("offline_assets"))
     add("map", "PASS" if map_exists and offline else "PARTIAL", generated=map_exists, offline_assets="yes" if offline else "no",

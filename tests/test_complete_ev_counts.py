@@ -121,3 +121,55 @@ def test_failed_reconciliation_retains_existing_and_extracted_audit():
         recovery.reconcile([row("Alpha", "2WN", 3), row("", "LMV", 9)], baseline, expected, checks)
     check = checks["baseline_check"][0]
     assert check["existing"] == 7 and check["extracted"] == 12 and check["status"] == "STOP"
+
+
+def test_borderless_page_edge_row_uses_word_positions(monkeypatch):
+    monkeypatch.setattr(config, "PUBLIC_EV_PDF_FIRST_TABLE_PAGE", 1)
+    boxes=[(0,20,20,40),(20,20,40,40),(40,20,60,40),(60,20,80,40),(80,20,100,40)]
+    words=[dict(word(text,x),top=25,bottom=35) for text,x in [("Alpha",1),("LMV",21),("1",41),("2",61),("3",81)]]
+    words += [dict(word(text,x),top=5,bottom=15) for text,x in [("2WN",21),("4",41),("5",61),("6",81)]]
+    page=SimpleNamespace(extract_words=lambda **kw:words,find_tables=lambda **kw:[SimpleNamespace(rows=[SimpleNamespace(cells=boxes)])])
+    class Document:
+        pages=[page]
+        def __enter__(self): return self
+        def __exit__(self,*args): pass
+    monkeypatch.setattr(recovery.importlib,"import_module",lambda name:SimpleNamespace(open=lambda path:Document()))
+    rows,audit,_=recovery.pdfplumber_rows("fake.pdf")
+    assert [r["category"] for r in rows] == ["2WN", "LMV"]
+    assert rows[0]["values"]["2025"] == 6
+    assert rows[0]["district"] == "Alpha" and len(audit) == 10
+    assert "merged district label" in audit[0]["row_detection"]
+    assert "page-edge" in audit[1]["row_detection"]
+
+
+def test_extra_category_is_allowed_only_when_pdf_explicitly_zero():
+    baseline, expected = base()
+    rows=[row("Alpha","2WN",3),row("","LMV",4),row("","OTH",0)]
+    result,_=recovery.reconcile(rows,baseline,expected)
+    assert result.ev_total.iloc[0] == 7
+    rows[-1]=row("","OTH",1)
+    with pytest.raises(ValueError,match="Unexpected nonzero"):
+        recovery.reconcile(rows,baseline,expected)
+    rows[-1]=row("","OTH",None)
+    with pytest.raises(ValueError,match="ambiguous"):
+        recovery.reconcile(rows,baseline,expected)
+
+
+def test_page_edge_continuation_keeps_previous_district_blank(monkeypatch):
+    monkeypatch.setattr(config, "PUBLIC_EV_PDF_FIRST_TABLE_PAGE", 1)
+    first=[None,(20,20,40,40),(40,20,60,40),(60,20,80,40),(80,20,100,40)]
+    second=[(0,40,20,60),(20,40,40,60),(40,40,60,60),(60,40,80,60),(80,40,100,60)]
+    words=[]
+    for top,items in [(5,[("MPV",21),("0",41),("0",61),("0",81)]),
+                      (25,[("OTH",21),("0",41),("0",61),("0",81)]),
+                      (45,[("Beta",1),("2WIC",21),("0",41),("0",61),("0",81)])]:
+        words.extend(dict(word(text,x),top=top,bottom=top+10) for text,x in items)
+    page=SimpleNamespace(extract_words=lambda **kw:words,find_tables=lambda **kw:[SimpleNamespace(rows=[SimpleNamespace(cells=first),SimpleNamespace(cells=second)])])
+    class Document:
+        pages=[page]
+        def __enter__(self): return self
+        def __exit__(self,*args): pass
+    monkeypatch.setattr(recovery.importlib,"import_module",lambda name:SimpleNamespace(open=lambda path:Document()))
+    rows,_,_=recovery.pdfplumber_rows("fake.pdf")
+    assert [row["district"] for row in rows] == ["", "", "Beta"]
+    assert [row["category"] for row in rows] == ["MPV", "OTH", "2WIC"]

@@ -50,15 +50,57 @@ def pdfplumber_rows(path):
             if page_number < config.PUBLIC_EV_PDF_FIRST_TABLE_PAGE:
                 continue
             words = page.extract_words(**config.PUBLIC_EV_PDF_WORD_SETTINGS)
-            for table in page.find_tables(table_settings=config.PUBLIC_EV_PDF_TABLE_SETTINGS):
+            tables = page.find_tables(table_settings=config.PUBLIC_EV_PDF_TABLE_SETTINGS)
+            page_rows = []
+            all_boxes = [[] for _ in columns]
+            included = set()
+            for table in tables:
                 for row in table.rows:
                     if len(row.cells) != len(columns):
                         raise ValueError(f"Page {page_number}: expected five table columns; review PDF geometry.")
                     cells = [cell_from_words(words, bbox, page_number, column) for column, bbox in zip(columns, row.cells)]
-                    audit.extend(cells)
-                    rows.append({"district": cells[0]["raw"], "category": cells[1]["raw"],
-                                 "values": {str(year): cells[i+2]["value"] for i, year in enumerate(config.PUBLIC_EV_YEARS)},
-                                 "page": page_number, "raw_cells": cells})
+                    for i, bbox in enumerate(row.cells):
+                        if bbox is not None:
+                            all_boxes[i].append(bbox)
+                    included.update((word["text"], word["x0"], word["top"]) for word in cells[1]["words"])
+                    page_rows.append(cells)
+            if page_rows:
+                # Page breaks can leave the first row without a top border.
+                # Its category word still fixes the row and the grid fixes columns.
+                if not all(all_boxes):
+                    raise ValueError(f"Page {page_number}: column positions cannot be established.")
+                ranges = [(min(b[0] for b in boxes), max(b[2] for b in boxes)) for boxes in all_boxes]
+                category_left, category_right = ranges[1]
+                first_top = min(b[1] for b in all_boxes[1])
+                last_bottom = max(b[3] for b in all_boxes[1])
+                for word in words:
+                    identity = (word["text"], word["x0"], word["top"])
+                    if word["text"] not in config.PUBLIC_EV_CATEGORY_CODES or identity in included:
+                        continue
+                    if not (category_left <= word["x0"] and word["x1"] <= category_right):
+                        continue
+                    if not (word["bottom"] <= first_top or word["top"] >= last_bottom):
+                        raise ValueError(f"Page {page_number}: a category inside the grid was not assigned; review word positions.")
+                    top, bottom = word["top"], word["bottom"]
+                    cells = [cell_from_words(words, (left, top, right, bottom), page_number, column)
+                             for (left, right), column in zip(ranges, columns)]
+                    for cell in cells:
+                        cell["row_detection"] = "page-edge category word; columns from page grid"
+                    first = page_rows[0]
+                    first_category = first[1]["raw"]
+                    if (word["bottom"] <= first_top and first[0]["raw"] and
+                            first_category in config.PUBLIC_EV_CATEGORY_CODES and
+                            config.PUBLIC_EV_CATEGORY_CODES.index(word["text"]) < config.PUBLIC_EV_CATEGORY_CODES.index(first_category)):
+                        # A new district can start in the borderless row while its
+                        # merged name cell begins in the detected grid below it.
+                        cells[0] = dict(first[0], row_detection="merged district label; preceding category in printed order")
+                    page_rows.append(cells)
+                page_rows.sort(key=lambda cells: cells[1]["bbox"][1])
+            for cells in page_rows:
+                audit.extend(cells)
+                rows.append({"district": cells[0]["raw"], "category": cells[1]["raw"],
+                             "values": {str(year): cells[i+2]["value"] for i, year in enumerate(config.PUBLIC_EV_YEARS)},
+                             "page": page_number, "raw_cells": cells})
     if not rows:
         raise ValueError("pdfplumber found no annexure table cells.")
     return rows, audit, "pdfplumber word coordinates"
@@ -194,7 +236,12 @@ def reconcile(rows, baseline, expected_categories, checks=None):
         expected = set(expected_categories.loc[expected_categories.district.eq(original.district), "category"])
         actual = set(group.category)
         if actual - expected:
-            raise ValueError(f"Unexpected categories for {original.district}: {sorted(actual-expected)}; measure cannot change.")
+            extra = group[group.category.isin(actual - expected)]
+            columns = [str(year) for year in config.PUBLIC_EV_YEARS]
+            if not extra[columns].notna().all().all() or not extra[columns].eq(0).all().all():
+                raise ValueError(f"Unexpected nonzero or ambiguous categories for {original.district}: {sorted(actual-expected)}; measure cannot change.")
+            print(f"PDF category audit: {original.district}: {sorted(actual-expected)} explicitly zero in every source year; historical text omitted these rows.")
+            expected |= actual
         year_totals[original.district] = {}
         for year in config.PUBLIC_EV_YEARS:
             column = str(year)

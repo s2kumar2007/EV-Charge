@@ -1,3 +1,37 @@
+# Latest completion checks - 27 October 2026
+
+This section supersedes the earlier PDF/PySAL blockers below.
+
+- Part A completes: all 37 district totals are now present, preserving all 26
+  previously complete values. 2025 sum = 174,477 annual new EV registrations.
+  Word positions recover rows lacking borders at page breaks. All original PDF
+  coordinates remain audited. No printed district/state total rows exist in the
+  annexure; printed-total comparisons are recorded as not available, not invented.
+- State offline pipeline completes with 37 basic ranks and 33 composite ranks;
+  four polygons remain population-incomplete. The five population mapping rows
+  are still unapproved and printed for human review.
+- The existing project virtual environment contains esda 2.9.0/libpysal 4.14.1.
+  Actual Moran I=0.04443963065913198, p=0.056, n=33; Gi* n=33, 999 permutations.
+  Small-sample warning retained. Fixed an offline dependency-test isolation issue
+  revealed by running the real integration. Project-environment tests: 108 passed.
+- Both Folium maps retain all 11 JS/CSS assets locally after recaching. Tiles
+  remain online. Native Google browser verification remains blocked: Computer Use
+  stopped because it could not reliably identify the current Windows browser URL.
+  No further browser actions were taken after that stop.
+- National EV/population compatibility remains 0/735. The supplied combined EV
+  table cannot be disaggregated. The 640 Census 2011 district candidates require
+  geography review. Missing pinned national state files still require a connected
+  terminal; default provider remains unchanged. Synthetic data: NO.
+
+Manual actions still open: verify the five population rows with geography
+sources; supply compatible district EV counts for India and review Census extent
+mappings. Run `python src/load_boundaries.py --compare --national` online to cache
+missing pinned files. Run `python run_map.py` locally and verify Google rendering
+and authorization. Review charger merges, AHP judgments and boundary rights.
+Use your terminal to commit if the agent still cannot write the Git index.
+
+---
+
 # Latest verification - 27 October 2026
 
 This update supersedes earlier blocked-access notes below. Acceptance remains

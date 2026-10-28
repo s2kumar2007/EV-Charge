@@ -245,3 +245,23 @@ README.md, outputs/feasibility.md and CHANGES.md.
   Stopped without changing EV CSV rows; raw cells/coordinates and a STOP
   receipt are retained. State rerun retains 23 composite ranks.
 - Offline regression suite: 104 passed, 1 skipped (real PySAL Gi* integration).
+
+
+## 2026-10-27 - Complete original-PDF EV recovery and state statistics
+
+- Fixed word-coordinate extraction of borderless page-break rows and a merged
+  district label. Explicit zero-only source rows omitted by old text extraction
+  are accepted without changing totals; nonzero or ambiguous additions stop.
+- Recovered all 11 missing EV totals: 37/37 complete, all 26 prior totals unchanged,
+  annual 2025 measure unchanged. District sum 174,477; no printed total rows exist
+  in the annexure. Regenerated CSV and complete raw-coordinate audit.
+- Reran the state pipeline with the existing project virtual environment:
+  37 basic ranks, 33 composite ranks. Moran I=0.04443963065913198, p=0.056,
+  n=33; Gi* n=33. Kept the small-sample warning and four missing populations.
+- Fixed the missing-PySAL test to clear a cached weights submodule as well as the
+  package, allowing both missing-dependency and real integration cases to run.
+- Acceptance now asks for complete indicator inputs when no national spatial
+  statistics can be run, rather than incorrectly asking to reinstall dependencies.
+- Full project-environment regression: 108 passed. Google browser verification,
+  national district demand inputs, population review and national provider files
+  remain blocked; no fabricated values or silent provider changes.

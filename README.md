@@ -10,11 +10,12 @@ for both runners. To use the supplied geoBoundaries provider nationally, set
 `BOUNDARY_PROVIDER="geoboundaries"` and first cache its metadata/downloads online;
 the old root GeoJSON is not silently treated as the current release.
 
-Current verification: **104 passed, 1 skipped**. State run: **37 polygons,
-220 raw chargers, 216 merged stations, 26 basic ranks, 33 accepted populations,
-37 road/commercial observations, 23 composite ranks**. No synthetic data.
-Acceptance is **PARTIAL**: PDF baseline verification, PySAL, national boundary
-comparison and Google browser authorization remain incomplete. Folium JS/CSS
+Current verification: **108 passed** in the project virtual environment. State run:
+**37 polygons, 220 raw chargers, 216 merged stations, 37 basic ranks, 33 accepted
+populations, 37 road/commercial observations, 33 composite ranks**. No synthetic data.
+Acceptance is **PARTIAL**: population review, national district demand data,
+national boundary comparison and Google browser authorization remain incomplete.
+The original PDF EV recovery and real state spatial statistics now complete. Folium JS/CSS
 assets are now cached and the state provider comparison completes. See `outputs/feasibility.md`.
 
 Python 3.10+. This is a map and an auditable district comparison, with no
@@ -101,14 +102,14 @@ Original files, credentials and generated maps stay ignored.
 
 ## What you must supply or review by hand
 
-1. The original PDF now extracts with pdfplumber word coordinates. The baseline
-   check passes 17 existing totals but cannot verify nine: Chengalpattu, Erode,
-   Kancheepuram, Krishnagiri, Nagapattinam, Pudukkottai, Salem, Theni, Viluppuram.
-   Extraction stopped and preserved every original CSV row. Review the original
-   PDF against `data/samples/official_sources/public_ev_pdf_cells.json` and
-   `public_ev_pdf_checks.json`; do not replace values until all 26 baseline
-   totals verify. Then run `python src/complete_ev_counts.py` and the state
-   pipeline. Eleven missing districts remain missing.
+1. Part A completes: all 37 district EV totals are extracted from original PDF
+   word positions. All 26 previously complete values verify unchanged. The
+   2025 district sum is 174,477. No printed district/state total rows occur in
+   this annexure, so no independent printed-total match is claimed. The audit
+   retains every raw cell/word coordinate. The reader recovers borderless page
+   continuation rows, including a district label merged into the next grid row.
+   One zero-only category omitted by the historical text is retained as observed
+   zeros; nonzero/ambiguous category additions still stop extraction.
 2. Review `data/samples/district_crosswalk.csv`: **Sivagangai, Thoothukudi,
    Kanniyakumari, Tiurupathur, Mayiladuthurai**. Only exact normalised names are
    `one_to_one`. Other rows are `needs_human_check`; fuzzy/geocode destinations
@@ -119,10 +120,12 @@ Original files, credentials and generated maps stay ignored.
    aggregate missing. The initial crosswalk accepts 33 of 37 polygons; four
    polygons are missing population and Mayiladuthurai has no resolved polygon.
    Exact spelling alone still does not establish historical geography.
-3. Install `python -m pip install libpysal esda` in a connected terminal, rerun
-   `python run_all.py --offline`, then `python -m pytest -q`. The current Gi*
-   integration test is skipped. The real run has 23 eligible districts but
-   **0 actually used** for Moran/Gi*: no substitute statistics were generated.
+3. Use the project virtual environment: it has esda 2.9.0 and libpysal 4.14.1.
+   Run `.\.venv\Scripts\python.exe run_all.py --offline`. The actual state
+   Moran/Gi* calculations use 33 districts: Moran I=0.04443963065913198,
+   permutation p=0.056, 999 permutations; Gi* n=33. This is a small sample,
+   indicative rather than conclusive. The default system Python lacks esda;
+   do not overwrite verified outputs using an incomplete environment.
 4. Both Folium maps now have all 11 JS/CSS dependencies cached; keep each
    `assets/` directory beside its HTML. Basemap tiles still need internet.
    Regenerating a map with MAP_OFFLINE_MODE=False requires recaching its assets.
