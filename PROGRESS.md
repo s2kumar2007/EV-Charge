@@ -34,4 +34,5 @@
 - `88a7b19` feat(optimiser): simplified FRLM-style corridor siting with road class proxy
 - `62b6773` feat(optimiser): ranked outputs/recommended_sites.csv and map layer with popups
 - `39c2446` test(api): TestClient tests for each endpoint
-- `[pending]` feat(api): FastAPI app/main with GET /districts, /districts/{id}, /corridors, /sites
+- `a508e7c` feat(api): FastAPI app/main with GET /districts, /districts/{id}, /corridors, /sites
+- `[pending]` feat(api): POST /whatif returning recomputed ranges

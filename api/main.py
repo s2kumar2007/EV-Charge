@@ -90,9 +90,81 @@ class WhatIfRequest(BaseModel):
     adoption_growth_pct: float = 20.0
     target_ratio: float = 20.0
     undercount_factor: float = 1.2
+    n_simulations: int = 150
 
 
 @app.post("/api/whatif")
-def calculate_whatif(req: WhatIfRequest):
+def calculate_whatif(req: WhatIfRequest) -> Dict[str, Any]:
     """Recompute district port deficit ranges under custom what-if assumptions."""
-    raise NotImplementedError("Skeleton for test")
+    gap_file = OUTPUTS / "district_gap_scores.csv"
+    if not gap_file.exists():
+        sample_file = SAMPLES / "vahan_tn_ev_by_district.csv"
+        if sample_file.exists():
+            df = pd.read_csv(sample_file)
+        else:
+            raise HTTPException(status_code=404, detail="District data not found.")
+    else:
+        df = pd.read_csv(gap_file)
+
+    rng = np.random.RandomState(2026)
+    results = []
+
+    growth_mult = 1.0 + (req.adoption_growth_pct / 100.0)
+    for _, row in df.iterrows():
+        d_name = row.get("district", "Unknown")
+        d_key = str(row.get("district_key", norm_key(d_name)))
+        d_flag = str(row.get("data_flag", "real")).lower()
+        ev_total = row.get("ev_total", np.nan)
+        ports = float(row.get("port_count", row.get("charger_count", 0)))
+        if pd.isna(ports):
+            ports = 0.0
+
+        if d_flag != "real" or pd.isna(ev_total) or ev_total <= 0:
+            results.append({
+                "district": d_name,
+                "district_key": d_key,
+                "ev_total": None,
+                "ports_target_p10": None,
+                "ports_target_p50": None,
+                "ports_target_p90": None,
+                "ports_deficit_p10": None,
+                "ports_deficit_p50": None,
+                "ports_deficit_p90": None,
+                "data_flag": d_flag if d_flag != "real" else "missing",
+                "drivers": "No EV data; what-if simulation unavailable",
+            })
+            continue
+
+        base_evs = float(ev_total) * growth_mult
+        sim_evs = base_evs * rng.normal(loc=1.0, scale=0.08, size=req.n_simulations)
+        sim_ports = ports * req.undercount_factor * rng.uniform(0.9, 1.1, size=req.n_simulations)
+        sim_targets = np.ceil(sim_evs / req.target_ratio)
+        sim_deficits = np.clip(np.ceil(sim_targets - sim_ports), 0, None)
+
+        p10_t, p50_t, p90_t = np.percentile(sim_targets, [10, 50, 90])
+        p10_d, p50_d, p90_d = np.percentile(sim_deficits, [10, 50, 90])
+
+        results.append({
+            "district": d_name,
+            "district_key": d_key,
+            "ev_total": int(round(base_evs)),
+            "ports_target_p10": int(p10_t),
+            "ports_target_p50": int(p50_t),
+            "ports_target_p90": int(p90_t),
+            "ports_deficit_p10": int(p10_d),
+            "ports_deficit_p50": int(p50_d),
+            "ports_deficit_p90": int(p90_d),
+            "data_flag": "projected",
+            "drivers": f"What-if ({req.adoption_growth_pct:+g}% EV growth, {req.target_ratio:g} EVs/port): P50 deficit = {int(p50_d)}",
+        })
+
+    return {
+        "parameters": {
+            "adoption_growth_pct": req.adoption_growth_pct,
+            "target_ratio": req.target_ratio,
+            "undercount_factor": req.undercount_factor,
+            "n_simulations": req.n_simulations,
+        },
+        "districts": results,
+        "drivers": f"What-if simulation: {req.adoption_growth_pct:+g}% EV growth, {req.target_ratio:g} EVs/port, {req.undercount_factor:g}x charger undercount",
+    }

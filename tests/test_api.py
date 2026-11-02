@@ -53,7 +53,6 @@ def test_get_sites_endpoint(client):
     assert isinstance(data, list)
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(api)")
 def test_post_whatif_recomputes_ranges(client):
     """Verify POST /api/whatif recomputes deficit ranges under custom parameters."""
     payload = {
