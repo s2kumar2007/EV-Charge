@@ -15,7 +15,6 @@ from requirements_model import (
 )
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(requirements)")
 def test_erlang_c_hand_computed_values():
     """Verify Erlang C probability and expected wait against exact hand-calculated solutions."""
     # Scenario: lambda = 2 arrivals/hr, mu = 2 services/hr (avg 30 min duration), traffic A = 1.0 Erlang
@@ -42,7 +41,6 @@ def test_erlang_c_hand_computed_values():
     assert pytest.approx(wait_c3, rel=1e-4) == 1.0 / 44.0
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(requirements)")
 def test_erlang_c_boundary_conditions():
     """Verify Erlang C stability condition rho >= 1 and zero traffic."""
     # Zero traffic has 0 probability of queueing
@@ -51,3 +49,33 @@ def test_erlang_c_boundary_conditions():
     # Overloaded system (rho >= 1): queue explodes, probability is 1.0
     assert erlang_c_probability(c=2, traffic_erlangs=2.5) == 1.0
     assert erlang_c_waiting_time(c=2, arrival_rate=5.0, service_rate=2.0) == float("inf")
+
+
+def test_calculate_net_charger_requirements():
+    """Verify transparent EV-to-port sizing with confidence-weighted existing capacity."""
+    districts = pd.DataFrame([
+        {"district": "DistA", "district_key": "dista", "ev_total": 1000, "port_count": 20, "avg_confidence": 0.8, "data_flag": "real"},
+        {"district": "DistB", "district_key": "distb", "ev_total": 400, "port_count": 0, "avg_confidence": 0.0, "data_flag": "real"},
+        {"district": "DistC", "district_key": "distc", "ev_total": np.nan, "port_count": 5, "avg_confidence": 0.9, "data_flag": "missing"},
+    ])
+    # 20 EVs per port
+    res = calculate_net_charger_requirements(districts, evs_per_port=20.0, confidence_weighting=True, save_output=False)
+    assert len(res) == 3
+
+    a_row = res[res["district_key"] == "dista"].iloc[0]
+    # DistA: target = 1000 / 20 = 50 ports. Existing = 20 * 0.8 = 16. Deficit = 50 - 16 = 34.
+    assert a_row["ports_target"] == 50
+    assert a_row["ports_existing_effective"] == 16.0
+    assert a_row["ports_deficit"] == 34
+    assert a_row["data_flag"] == "real"
+
+    b_row = res[res["district_key"] == "distb"].iloc[0]
+    # DistB: target = 400 / 20 = 20 ports. Existing = 0. Deficit = 20.
+    assert b_row["ports_target"] == 20
+    assert b_row["ports_deficit"] == 20
+
+    c_row = res[res["district_key"] == "distc"].iloc[0]
+    # DistC: Missing EV data -> no target or deficit
+    assert pd.isna(c_row["ports_target"])
+    assert pd.isna(c_row["ports_deficit"])
+    assert c_row["data_flag"] == "missing"

@@ -17,15 +17,130 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
+import config
+from utils import OUTPUTS, PROCESSED, ensure_dirs
+
 
 def erlang_c_probability(c: int, traffic_erlangs: float) -> float:
-    """Compute Erlang C probability that an arriving vehicle must wait in queue."""
-    raise NotImplementedError("Skeleton for test")
+    """
+    Compute Erlang C probability that an arriving vehicle must wait in queue.
+    Formula:
+      P_C(c, A) = [ (A^c / c!) * (1 / (1 - rho)) ] / [ sum_{k=0}^{c-1} (A^k / k!) + (A^c / c!) * (1 / (1 - rho)) ]
+      where rho = A / c.
+    """
+    if c <= 0:
+        raise ValueError("Number of servers c must be a positive integer.")
+    if traffic_erlangs <= 0.0:
+        return 0.0
+    A = float(traffic_erlangs)
+    rho = A / float(c)
+    if rho >= 1.0:
+        return 1.0  # System overloaded; queue is unstable
+
+    # Sum_{k=0}^{c-1} A^k / k!
+    sum_terms = 0.0
+    term = 1.0
+    for k in range(c):
+        if k > 0:
+            term *= (A / k)
+        sum_terms += term
+
+    term_c = term * (A / c)
+    last_term = term_c / (1.0 - rho)
+    denom = sum_terms + last_term
+    if denom <= 0:
+        return 1.0
+    return float(np.clip(last_term / denom, 0.0, 1.0))
 
 
 def erlang_c_waiting_time(c: int, arrival_rate: float, service_rate: float) -> float:
     """Compute expected waiting time in queue (in hours) for an M/M/c queue."""
-    raise NotImplementedError("Skeleton for test")
+    if arrival_rate <= 0.0 or service_rate <= 0.0:
+        return 0.0
+    A = arrival_rate / service_rate
+    rho = A / float(c)
+    if rho >= 1.0:
+        return float("inf")
+
+    p_c = erlang_c_probability(c, A)
+    denom = (c * service_rate) - arrival_rate
+    if denom <= 0:
+        return float("inf")
+    return float(p_c / denom)
+
+
+def calculate_net_charger_requirements(
+    district_df: pd.DataFrame,
+    evs_per_port: Optional[float] = None,
+    confidence_weighting: Optional[bool] = None,
+    save_output: bool = True,
+) -> pd.DataFrame:
+    """
+    Compute transparent EV-to-port ratio sizing with confidence-weighted existing capacity.
+
+    Inputs:
+      district_df: DataFrame with district EV counts and existing port counts.
+      evs_per_port: Planning ratio (default config.REQUIREMENTS_EVS_PER_PORT or 20.0).
+      confidence_weighting: Weight existing ports by confidence (default True).
+      save_output: Save to outputs/charger_requirements.csv.
+    Returns:
+      pd.DataFrame with target ports, effective existing ports, net deficit, drivers, data_flag.
+    """
+    ratio = evs_per_port or getattr(config, "REQUIREMENTS_EVS_PER_PORT", 20.0)
+    use_conf = confidence_weighting if confidence_weighting is not None else getattr(config, "REQUIREMENTS_CONFIDENCE_WEIGHTING", True)
+
+    records = []
+    for _, row in district_df.iterrows():
+        d_name = row.get("district", "Unknown")
+        d_key = row.get("district_key", str(d_name).lower().strip())
+        d_flag = str(row.get("data_flag", "real")).lower()
+        ev_total = row.get("ev_total", np.nan)
+        existing_ports = float(row.get("port_count", row.get("charger_count", 0)))
+        if pd.isna(existing_ports):
+            existing_ports = 0.0
+        conf_score = float(row.get("avg_confidence", row.get("confidence", 0.85)))
+        if pd.isna(conf_score) or conf_score <= 0:
+            conf_score = 0.85
+
+        if d_flag != "real" or pd.isna(ev_total) or ev_total <= 0:
+            records.append({
+                "district": d_name,
+                "district_key": d_key,
+                "ev_total": np.nan,
+                "ports_target": np.nan,
+                "ports_existing_raw": int(existing_ports),
+                "ports_existing_effective": np.nan,
+                "ports_deficit": np.nan,
+                "confidence": 0.0,
+                "drivers": "No EV data available; requirements sizing unavailable",
+                "data_flag": d_flag if d_flag != "real" else "missing",
+            })
+            continue
+
+        ports_target = int(math.ceil(ev_total / ratio))
+        effective_existing = round(existing_ports * conf_score, 1) if use_conf else float(existing_ports)
+        deficit = max(0, int(math.ceil(ports_target - effective_existing)))
+
+        records.append({
+            "district": d_name,
+            "district_key": d_key,
+            "ev_total": int(ev_total),
+            "ports_target": ports_target,
+            "ports_existing_raw": int(existing_ports),
+            "ports_existing_effective": effective_existing,
+            "ports_deficit": deficit,
+            "confidence": round(conf_score, 4),
+            "drivers": f"Ratio sizing ({ratio:.0f} EVs/port): target {ports_target} - effective existing {effective_existing:.1f} = deficit {deficit}",
+            "data_flag": "real",
+        })
+
+    res_df = pd.DataFrame(records)
+    if save_output:
+        ensure_dirs()
+        out_file = OUTPUTS / getattr(config, "REQUIREMENTS_OUTPUT_FILE", "charger_requirements.csv")
+        res_df.to_csv(out_file, index=False)
+
+    return res_df
 
 
 def size_ports_erlang_c(
@@ -35,15 +150,6 @@ def size_ports_erlang_c(
     max_wait_prob: float = 0.15,
 ) -> int:
     """Find minimum number of ports c such that waiting time and wait probability meet target."""
-    raise NotImplementedError("Skeleton for test")
-
-
-def calculate_net_charger_requirements(
-    district_df: pd.DataFrame,
-    evs_per_port: float = 20.0,
-    confidence_weighting: bool = True,
-) -> pd.DataFrame:
-    """Compute transparent EV-to-port ratio sizing with confidence-weighted existing capacity."""
     raise NotImplementedError("Skeleton for test")
 
 

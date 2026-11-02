@@ -23,4 +23,5 @@
 - `a964aea` feat(forecast): ensemble plus residual-bootstrap prediction intervals
 - `fe5970a` feat(forecast): rolling-origin backtest reporting MAPE and MAE per model to outputs/forecast_backtest.csv
 - `47cbaa1` feat(forecast): convert to future EVs per district only where a real district share exists
-- `[pending]` test(requirements): Erlang C against hand-computed values
+- `d1ca8ff` test(requirements): Erlang C against hand-computed values
+- `[pending]` feat(requirements): transparent EVs-per-port sizing (configurable), with confidence-weighted existing ports
