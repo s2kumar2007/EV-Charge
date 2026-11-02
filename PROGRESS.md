@@ -41,4 +41,5 @@
 - `3c2ddda` feat(dashboard): what-if slider wired to /whatif
 - `32753d3` fix(dashboard): indicative warnings for small samples, no EV data state
 - `0e5acc6` feat: run_dashboard.py starting server and printing URL
-- `[pending]` feat(validation): outputs/validation_report.md
+- `75ec4fc` feat(validation): outputs/validation_report.md
+- `[pending]` data: data/samples/spot_check_TEMPLATE.csv with 30 deduplicated chargers

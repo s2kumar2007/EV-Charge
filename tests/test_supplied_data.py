@@ -39,3 +39,23 @@ def test_census_printed_country_total_must_reconcile():
         supplied.census_candidates(frame)
     frame.loc[0, "TOT_P"] = "30"
     assert supplied.census_candidates(frame).population.tolist() == [30]
+
+
+def test_spot_check_template_schema_and_integrity():
+    """Verify data/samples/spot_check_TEMPLATE.csv contains 30 valid real chargers."""
+    from pathlib import Path
+    template_file = Path(__file__).resolve().parents[1] / "data" / "samples" / "spot_check_TEMPLATE.csv"
+    assert template_file.exists(), "spot_check_TEMPLATE.csv must exist"
+    df = pd.read_csv(template_file)
+    assert len(df) == 30, f"Expected 30 records, found {len(df)}"
+    required_cols = [
+        "spot_id", "name", "latitude", "longitude", "operator",
+        "connector_types", "power_kw", "ports", "corridor_or_district",
+        "verification_method", "verification_notes", "data_flag"
+    ]
+    for col in required_cols:
+        assert col in df.columns, f"Missing required column: {col}"
+    assert df["latitude"].between(8.0, 14.5).all(), "Latitudes must lie within Tamil Nadu bounds"
+    assert df["longitude"].between(76.0, 81.0).all(), "Longitudes must lie within Tamil Nadu bounds"
+    assert df["ports"].ge(1).all(), "Ports must be at least 1"
+    assert df["data_flag"].eq("real").all(), "Spot check data must be marked real"

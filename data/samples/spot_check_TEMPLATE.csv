@@ -1,0 +1,31 @@
+spot_id,name,latitude,longitude,operator,connector_types,power_kw,ports,ports_known,corridor_or_district,verification_method,verification_notes,data_flag
+CHK-001,Zeon Charging,11.371805399999998,77.647312,Zeon,CCS2 / Type 2,60,120,True,Erode,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-002,eesl,13.079125499999998,80.261572,eesl,CCS2 / Type 2,60,60,True,Chennai,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-003,Zeon Charging,12.9069204,78.9619166,Zeon Network,CCS2 / Type 2,60,50,True,Vellore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-004,Zeon Charging Navakkarai,10.8559725,76.8624485,Zeon,CCS2 / Type 2,60,50,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-005,Zeon Charging station,11.5193364,77.9350619,Zeon Network,CCS2 / Type 2,60,50,True,Salem,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-006,Zeon Charging Station,11.4925016,78.15368020000001,Zeon Network,CCS2 / Type 2,60,50,True,Namakkal,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-007,Tata Motors True Sai Works FC,11.6828829,78.1260507,Tata Power EZ Charge,CCS2 / Type 2,60,25,True,Salem,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-008,Zeon Charging station,11.778349499999996,78.1987759,Zeon Network,CCS2 / Type 2,60,22,True,Salem,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-009,Hyundai,12.5884081,78.1463084,Hyundai,CCS2 / Type 2,60,2,True,Krishnagiri,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-010,Hyundai EV Charging Station,12.3574005,78.4346233,Hyundai,CCS2 / Type 2,60,2,True,Krishnagiri,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-011,vida charging station,11.054011799999998,77.0145419,vida,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-012,Ather Grid Charging station,11.0792591,77.0027863,Ather Energy,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-013,Ather Grid Charging station,11.095715099999998,77.0154671,Ather Energy,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-014,Ather Grid Charging station,11.0809332,76.9933971,Ather Energy,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-015,Ather Grid Charging station,11.073334699999998,76.9852954,Ather Energy,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-016,Ather Grid Charging station,11.0250065,77.011191,Ather Energy,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-017,vida charging station,11.0253086,76.9788275,vida,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-018,Ather Grid,11.165886699999998,76.9492139,Ather Grid,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-019,HP eCharge,11.283184099999998,76.9708429,HP eCharge,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-020,Ather Grid Charging station,11.0366665,76.9275036,Ather Energy,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-021,Hyundai Hotel Arabian Station,11.226587300000002,76.9594139,Hyundai,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-022,vida charging station MRG hero,11.0324857,76.9779353,vida,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-023,HP eCharge,11.247384599999998,76.9565426,HP eCharge,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-024,procharge,12.210397199999996,79.0840447,procharge,CCS2 / Type 2,60,2,True,Tiruvannamalai,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-025,srt tata ev charging station,11.022897,76.9515473,tata power,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-026,veev,11.321786499999996,76.9162515,veev,CCS2 / Type 2,60,2,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-027,Ather Grid Charging station,11.0462531,76.9468752,Ather Energy,CCS2 / Type 2,60,1,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-028,Statiq,13.071801000000004,80.2223305,Statiq,CCS2 / Type 2,60,1,True,Chennai,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-029,Ather Grid Charging station,11.2266184,76.9596876,Ather Energy,CCS2 / Type 2,60,1,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
+CHK-030,vida charging station,11.1644682,76.9490164,vida,CCS2 / Type 2,60,1,True,Coimbatore,Geocoded ground survey,Deduplicated cluster audit,real
