@@ -92,6 +92,40 @@ def test_corridor_dual_confidence_run():
     assert df_hc["gap_km"].max() > df_all["gap_km"].max()
 
 
+def test_corridor_outputs_contract(tmp_path, monkeypatch):
+    """Verify corridor gap CSV and GeoJSON contracts when running pipeline."""
+    from corridors import analyze_corridors
+    import config
+
+    monkeypatch.setattr(config, "CORRIDOR_OUTPUT_CSV", "test_corridor_gaps.csv")
+    monkeypatch.setattr(config, "CORRIDOR_OUTPUT_GEOJSON", "test_corridor_gaps.geojson")
+    from utils import OUTPUTS
+
+    corridor_geom = LineString([(80.0, 13.0), (80.0, 13.5)])
+    corridors_gdf = gpd.GeoDataFrame([
+        {"corridor_id": "TEST-CONTRACT", "corridor_name": "Contract Line", "geometry": corridor_geom}
+    ], crs="EPSG:4326")
+    chargers_df = pd.DataFrame([
+        {"id": "CH1", "name": "Test Charger", "longitude": 80.001, "latitude": 13.2, "confidence": 0.9, "data_flag": "real"}
+    ])
+
+    df, gdf = analyze_corridors(corridors_gdf=corridors_gdf, chargers_df=chargers_df, save_outputs=True)
+    csv_file = OUTPUTS / "test_corridor_gaps.csv"
+    geojson_file = OUTPUTS / "test_corridor_gaps.geojson"
+    try:
+        assert csv_file.exists()
+        assert geojson_file.exists()
+        loaded_df = pd.read_csv(csv_file)
+        assert not loaded_df.empty
+        for req_col in ("corridor_id", "from_location", "to_location", "gap_km", "flag_regular_gap", "flag_heavy_gap", "drivers", "data_flag"):
+            assert req_col in loaded_df.columns
+    finally:
+        if csv_file.exists():
+            csv_file.unlink()
+        if geojson_file.exists():
+            geojson_file.unlink()
+
+
 def test_corridor_spacing_fictional_line():
     """Verify consecutive-site spacing and gap flagging on a 100 km fictional corridor."""
     # Fictional straight corridor of length 100,000 meters (100 km) in a Cartesian plane

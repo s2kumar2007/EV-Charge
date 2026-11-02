@@ -14,4 +14,5 @@
 - `0f1809c` feat(corridors): snap chargers to corridor in a metric CRS with a configurable buffer
 - `850c3e8` feat(corridors): compute consecutive-site spacing and flag stretches above CORRIDOR_MAX_GAP_KM and CORRIDOR_MAX_GAP_HEAVY_KM
 - `643f6e3` feat(corridors): run spacing twice, all chargers and confidence >= cutoff, since OSM undercounts
-- `[pending]` docs(corridors): guideline figures verified against MoP 2024 notification
+- `f60066e` docs(corridors): guideline figures verified against MoP 2024 notification
+- `[pending]` feat(map): "Corridor gaps" layer plus outputs/corridor_gaps.csv and GeoJSON, with legend and popups

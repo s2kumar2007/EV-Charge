@@ -138,6 +138,37 @@ def main(include_slice1=True, coverage=None):
                                     popup=folium.Popup(popup, max_width=config.POPUP_MAX_WIDTH)).add_to(layer)
             layer.add_to(m)
             confidence_scale.add_to(m)
+    # Highway corridor gaps layer
+    corridor_path = OUTPUTS / getattr(config, "CORRIDOR_OUTPUT_GEOJSON", "corridor_gaps.geojson")
+    if corridor_path.exists():
+        try:
+            corridor_gdf = gpd.read_file(corridor_path)
+            hc_corridors = corridor_gdf[corridor_gdf.get("filter_mode", "high_confidence") == "high_confidence"].copy()
+            if not hc_corridors.empty:
+                def corridor_style(feature):
+                    p = feature["properties"]
+                    if p.get("flag_heavy_gap"):
+                        return {"color": "#7b1fa2", "weight": 5, "opacity": 0.9, "dashArray": "8, 4"}
+                    elif p.get("flag_regular_gap"):
+                        return {"color": "#d32f2f", "weight": 4, "opacity": 0.85, "dashArray": "6, 4"}
+                    else:
+                        return {"color": "#2e7d32", "weight": 3, "opacity": 0.75}
+
+                corridor_fields = ["corridor_name", "from_location", "to_location", "gap_km", "drivers", "guideline_status", "confidence", "data_flag"]
+                corridor_aliases = ["Corridor", "From", "To", "Gap (km)", "Assessment", "Guideline", "Confidence", "Data Flag"]
+                popup_fields = [f for f in corridor_fields if f in hc_corridors.columns]
+                aliases = [corridor_aliases[corridor_fields.index(f)] for f in popup_fields]
+
+                folium.GeoJson(
+                    hc_corridors,
+                    name="Highway corridor gaps (MoP 2024: 20km/100km)",
+                    style_function=corridor_style,
+                    tooltip=folium.GeoJsonTooltip(fields=popup_fields, aliases=aliases),
+                    popup=folium.GeoJsonPopup(fields=popup_fields, aliases=aliases),
+                    show=False,
+                ).add_to(m)
+        except Exception as err:
+            print(f"  [warning] Could not add corridor gaps layer to map: {err}")
     folium.LayerControl(collapsed=False).add_to(m)
     synthetic = int(districts.data_flag.astype(str).str.contains("synthetic", case=False).sum())
     missing = int(districts.ev_total.isna().sum())
