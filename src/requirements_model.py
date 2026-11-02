@@ -280,3 +280,38 @@ def monte_carlo_charger_requirements(
         })
 
     return pd.DataFrame(records)
+
+
+def main():
+    """Run full charger requirements sizing and uncertainty analysis."""
+    print("[1/3] Loading district EV counts and existing public charging capacity...")
+    ensure_dirs()
+    gap_scores_file = OUTPUTS / "district_gap_scores.csv"
+    if not gap_scores_file.exists():
+        print(f"District gap scores file not found at {gap_scores_file}. Run earlier pipeline steps first.")
+        return None
+
+    district_df = pd.read_csv(gap_scores_file)
+
+    print("[2/3] Computing ratio sizing and Monte Carlo uncertainty ranges...")
+    ratio_df = calculate_net_charger_requirements(district_df, save_output=False)
+    mc_df = monte_carlo_charger_requirements(district_df, n_simulations=500)
+
+    # Merge results
+    merged = ratio_df.copy()
+    merged["ports_target_p10"] = mc_df["ports_target_p10"]
+    merged["ports_target_p50"] = mc_df["ports_target_p50"]
+    merged["ports_target_p90"] = mc_df["ports_target_p90"]
+    merged["ports_deficit_p10"] = mc_df["ports_deficit_p10"]
+    merged["ports_deficit_p50"] = mc_df["ports_deficit_p50"]
+    merged["ports_deficit_p90"] = mc_df["ports_deficit_p90"]
+
+    print("[3/3] Saving outputs/charger_requirements.csv...")
+    out_file = OUTPUTS / getattr(config, "REQUIREMENTS_OUTPUT_FILE", "charger_requirements.csv")
+    merged.to_csv(out_file, index=False)
+    print(f"Saved {len(merged)} district requirements rows to {out_file}.")
+    return merged
+
+
+if __name__ == "__main__":
+    main()

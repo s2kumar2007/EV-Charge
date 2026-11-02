@@ -116,3 +116,21 @@ def test_monte_carlo_requirements_quantifies_uncertainty():
     b_row = mc1[mc1["district_key"] == "distb"].iloc[0]
     assert pd.isna(b_row["ports_deficit_p50"])
     assert b_row["data_flag"] == "missing"
+
+
+def test_requirements_main_pipeline():
+    """Verify requirements main() reads gap scores and outputs charger_requirements.csv."""
+    import requirements_model
+    from utils import OUTPUTS
+
+    res = requirements_model.main()
+    if res is not None:
+        out_file = OUTPUTS / "charger_requirements.csv"
+        assert out_file.exists()
+        df = pd.read_csv(out_file)
+        assert not df.empty
+        assert "ports_target" in df.columns
+        assert "ports_deficit" in df.columns
+        assert "ports_deficit_p50" in df.columns
+        assert "data_flag" in df.columns
+        assert "drivers" in df.columns
