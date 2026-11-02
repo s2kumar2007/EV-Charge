@@ -32,4 +32,4 @@
 - `ffa93a6` feat(optimiser): candidate generation along flagged corridors and in high-gap or Gi* hot districts
 - `d55f9b4` feat(optimiser): max-coverage MILP with PuLP/CBC under a site budget; grid capacity constraint only where real grid data exists
 - `88a7b19` feat(optimiser): simplified FRLM-style corridor siting with road class proxy
-- `[pending]` feat(optimiser): ranked outputs/recommended_sites.csv and map layer with popups
+- `62b6773` feat(optimiser): ranked outputs/recommended_sites.csv and map layer with popups
