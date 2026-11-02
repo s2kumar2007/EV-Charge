@@ -657,3 +657,8 @@ could not establish the active Windows URL reliably. Git staging/commit remains
 blocked by .git/index.lock write permissions; reconnecting alone does not
 change the workspace profile's read-only .git access. No security settings or
 Git identity were changed to work around that restriction.
+
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
