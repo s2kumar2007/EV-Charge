@@ -32,6 +32,28 @@ def test_load_corridors_fallback():
     assert geom.length > 0
 
 
+def test_snap_chargers_metric_projection():
+    """Verify snapping geographic chargers to corridor with UTM metric projection."""
+    # Segment near Chennai: (80.20, 13.05) to (80.20, 13.15)
+    corridor_geom = LineString([(80.20, 13.05), (80.20, 13.15)])
+
+    chargers_df = pd.DataFrame([
+        {"id": "NEAR", "longitude": 80.205, "latitude": 13.10, "confidence": 0.9, "data_flag": "real"},   # ~540 m offset (within 5 km)
+        {"id": "FAR", "longitude": 80.35, "latitude": 13.10, "confidence": 0.9, "data_flag": "real"},     # ~16 km offset (outside 5 km)
+    ])
+
+    snapped = snap_chargers_to_corridor(
+        corridor_geom=corridor_geom,
+        chargers_df=chargers_df,
+        buffer_meters=5000.0,
+        metric_crs="EPSG:32644",
+    )
+    assert len(snapped) == 1
+    assert snapped.iloc[0]["id"] == "NEAR"
+    assert snapped.iloc[0]["offset_m"] < 1000.0
+    assert snapped.iloc[0]["distance_along_m"] > 0
+
+
 @pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(corridors)")
 def test_corridor_spacing_fictional_line():
     """Verify consecutive-site spacing and gap flagging on a 100 km fictional corridor."""

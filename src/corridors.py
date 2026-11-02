@@ -59,11 +59,54 @@ def load_corridors(force_fetch: bool = False) -> gpd.GeoDataFrame:
 def snap_chargers_to_corridor(
     corridor_geom: LineString,
     chargers_df: pd.DataFrame,
-    buffer_meters: float = 5000.0,
-    metric_crs: Optional[str] = "EPSG:32644",
+    buffer_meters: float = config.CORRIDOR_BUFFER_METERS,
+    metric_crs: Optional[str] = config.CORRIDOR_METRIC_CRS,
 ) -> pd.DataFrame:
-    """Snap chargers within buffer_meters of corridor_geom and compute distance along corridor."""
-    raise NotImplementedError("Skeleton for test")
+    """
+    Snap chargers within buffer_meters of corridor_geom and compute distance along corridor.
+    If metric_crs is provided, projects from EPSG:4326 to metric_crs for accurate distance.
+    Returns sorted DataFrame of snapped chargers with distance_along_m and offset_m.
+    """
+    if chargers_df.empty:
+        return pd.DataFrame(columns=list(chargers_df.columns) + ["distance_along_m", "offset_m"])
+
+    df = chargers_df.copy()
+    if "longitude" not in df.columns or "latitude" not in df.columns:
+        raise ValueError("chargers_df must contain 'longitude' and 'latitude' columns.")
+
+    # Create points geometry
+    points = [Point(xy) for xy in zip(df["longitude"], df["latitude"])]
+
+    if metric_crs:
+        # Geographic coordinates in EPSG:4326 -> project to metric_crs
+        chargers_gdf = gpd.GeoDataFrame(df, geometry=points, crs="EPSG:4326").to_crs(metric_crs)
+        corridor_series = gpd.GeoSeries([corridor_geom], crs="EPSG:4326").to_crs(metric_crs)
+        corridor_proj = corridor_series.iloc[0]
+        points_proj = chargers_gdf.geometry
+    else:
+        # Already in Cartesian metric units
+        corridor_proj = corridor_geom
+        points_proj = pd.Series(points)
+
+    # Filter within buffer
+    buffer_geom = corridor_proj.buffer(buffer_meters)
+    mask = points_proj.map(buffer_geom.contains)
+    if not mask.any():
+        return pd.DataFrame(columns=list(df.columns) + ["distance_along_m", "offset_m"])
+
+    snapped_df = df[mask].copy().reset_index(drop=True)
+    snapped_points = points_proj[mask].reset_index(drop=True)
+
+    # Calculate along-corridor distance and perpendicular offset
+    distances = [float(corridor_proj.project(pt)) for pt in snapped_points]
+    offsets = [float(corridor_proj.distance(pt)) for pt in snapped_points]
+
+    snapped_df["distance_along_m"] = distances
+    snapped_df["offset_m"] = offsets
+
+    # Sort strictly along corridor
+    snapped_df = snapped_df.sort_values("distance_along_m").reset_index(drop=True)
+    return snapped_df
 
 
 def calculate_corridor_spacing(

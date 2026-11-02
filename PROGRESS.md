@@ -10,4 +10,5 @@
 - `d2f0825` chore: add Makefile or check.py target check that runs the commit gate (tests + compileall)
 - `bea6c6b` docs: create TODO_MANUAL.md (I must supply: national district EV counts, approve the 5 population mapping rows, OCM_API_KEY and GOOGLE_MAPS_API_KEY in .env, verify corridor guideline figures, operator spot-check)
 - `77923f5` test(corridors): failing tests for spacing on a fictional line with known distances
-- `[pending]` feat(corridors): load and cache NH/SH geometry from OSM (Chennai-Vellore-Bengaluru first, then Tamil Nadu); fallback manual corridor CSV in data/samples with source noted
+- `44b5194` feat(corridors): load and cache NH/SH geometry from OSM (Chennai-Vellore-Bengaluru first, then Tamil Nadu); fallback manual corridor CSV in data/samples with source noted
+- `[pending]` feat(corridors): snap chargers to corridor in a metric CRS with a configurable buffer
