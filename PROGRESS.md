@@ -15,4 +15,11 @@
 - `850c3e8` feat(corridors): compute consecutive-site spacing and flag stretches above CORRIDOR_MAX_GAP_KM and CORRIDOR_MAX_GAP_HEAVY_KM
 - `643f6e3` feat(corridors): run spacing twice, all chargers and confidence >= cutoff, since OSM undercounts
 - `f60066e` docs(corridors): guideline figures verified against MoP 2024 notification
-- `[pending]` feat(map): "Corridor gaps" layer plus outputs/corridor_gaps.csv and GeoJSON, with legend and popups
+- `b177e1a` feat(map): add Highway corridor gaps layer and pipeline step
+- `4afa95c` test(forecast): tests using a known synthetic curve defined inside the test only
+- `5b43dca` feat(forecast): loader for monthly VAHAN CSV plus data/raw/vahan_monthly_TEMPLATE.csv
+- `2c69c98` feat(forecast): logistic/Bass diffusion fit (scipy), 3 to 5 year horizon
+- `9e46e6a` feat(forecast): SARIMA via statsmodels (only when the series is long enough), else skipped with a stated reason
+- `a964aea` feat(forecast): ensemble plus residual-bootstrap prediction intervals
+- `fe5970a` feat(forecast): rolling-origin backtest reporting MAPE and MAE per model to outputs/forecast_backtest.csv
+- `47cbaa1` feat(forecast): convert to future EVs per district only where a real district share exists
