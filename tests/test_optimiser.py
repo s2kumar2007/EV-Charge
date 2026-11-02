@@ -89,3 +89,40 @@ def test_max_coverage_respects_real_grid_constraint():
     assert sol["status"] == "optimal"
     # Site 3 blocked due to real grid constraint; Site 1 must be picked instead
     assert [s["site_id"] for s in sol["selected_sites"]] == ["SITE-1"]
+
+
+def test_solve_corridor_frlm_allocates_sites_by_flow():
+    """Verify corridor FRLM prioritizes high-flow highways (NH over SH) and divides gaps."""
+    corridor_gaps = pd.DataFrame([
+        {
+            "corridor_id": "NH-48",
+            "corridor_name": "Chennai-Bengaluru",
+            "spacing_km": 60.0,
+            "start_distance_m": 0,
+            "end_distance_m": 60000,
+            "flagged": True,
+            "start_lon": 80.0,
+            "start_lat": 13.0,
+            "end_lon": 79.5,
+            "end_lat": 12.9,
+        },
+        {
+            "corridor_id": "SH-10",
+            "corridor_name": "State Highway 10",
+            "spacing_km": 30.0,
+            "start_distance_m": 0,
+            "end_distance_m": 30000,
+            "flagged": True,
+            "start_lon": 79.0,
+            "start_lat": 12.5,
+            "end_lon": 79.2,
+            "end_lat": 12.6,
+        },
+    ])
+
+    rec = solve_corridor_frlm(corridor_gaps, site_budget=2, max_spacing_km=20.0)
+    assert len(rec) == 2
+    # NH-48 has higher flow score (60 * 1.5 = 90 vs 30 * 1.0 = 30)
+    assert (rec["corridor_id"] == "NH-48").all()
+    assert (rec["ports_recommended"] == 4).all()
+    assert rec["data_flag"].iloc[0] == "recommended"

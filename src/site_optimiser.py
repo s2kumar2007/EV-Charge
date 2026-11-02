@@ -251,9 +251,109 @@ def generate_candidate_sites(
 def solve_corridor_frlm(
     corridor_gaps_df: pd.DataFrame,
     site_budget: int = 5,
+    road_class_weights: Optional[Dict[str, float]] = None,
+    max_spacing_km: float = 20.0,
 ) -> pd.DataFrame:
-    """Simplified Flow-Refueling Location Model (FRLM) along priority highway corridors."""
-    raise NotImplementedError("Skeleton for test")
+    """
+    Simplified Flow-Refueling Location Model (FRLM) along priority highway corridors.
+
+    Inputs:
+      corridor_gaps_df: DataFrame of corridor stretches (flagged or unflagged).
+      site_budget: Maximum number of new charging sites to recommend.
+      road_class_weights: Flow weight multiplier per road hierarchy (NH vs SH vs Expressway).
+      max_spacing_km: Maximum allowable distance between consecutive charging sites (default 20 km).
+    Returns:
+      pd.DataFrame of recommended charging site locations along corridors.
+    """
+    if corridor_gaps_df.empty or site_budget <= 0:
+        return pd.DataFrame()
+
+    weights = road_class_weights or {"EXPRESSWAY": 2.0, "NH": 1.5, "SH": 1.0, "OTHER": 0.8}
+
+    gaps = corridor_gaps_df.copy()
+    if "flagged" in gaps.columns:
+        gaps = gaps[gaps["flagged"] == True]
+
+    if gaps.empty:
+        return pd.DataFrame()
+
+    records = []
+    for _, row in gaps.iterrows():
+        cid = str(row.get("corridor_id", "NH"))
+        if "exp" in cid.lower():
+            r_class = "EXPRESSWAY"
+        elif "nh" in cid.lower():
+            r_class = "NH"
+        elif "sh" in cid.lower():
+            r_class = "SH"
+        else:
+            r_class = "OTHER"
+
+        w = weights.get(r_class, 1.0)
+        gap_km = float(row.get("spacing_km", 0.0))
+        start_m = float(row.get("start_distance_m", 0.0))
+        end_m = float(row.get("end_distance_m", start_m + gap_km * 1000.0))
+        flow_score = gap_km * w
+
+        records.append({
+            "row": row,
+            "corridor_id": cid,
+            "corridor_name": row.get("corridor_name", cid),
+            "road_class": r_class,
+            "weight": w,
+            "gap_km": gap_km,
+            "start_m": start_m,
+            "end_m": end_m,
+            "flow_score": flow_score,
+            "start_lon": float(row.get("start_lon", row.get("longitude", 80.0))),
+            "start_lat": float(row.get("start_lat", row.get("latitude", 13.0))),
+            "end_lon": float(row.get("end_lon", row.get("longitude", 80.0))),
+            "end_lat": float(row.get("end_lat", row.get("latitude", 13.0))),
+        })
+
+    # Sort corridors by flow refueling priority descending
+    records.sort(key=lambda x: x["flow_score"], reverse=True)
+
+    recommended = []
+    sites_allocated = 0
+
+    for item in records:
+        if sites_allocated >= site_budget:
+            break
+
+        gap_km = item["gap_km"]
+        stations_needed = max(1, int(math.ceil(gap_km / max_spacing_km)) - 1)
+        stations_to_add = min(stations_needed, site_budget - sites_allocated)
+
+        for s in range(1, stations_to_add + 1):
+            fraction = s / (stations_to_add + 1)
+            dist_along = item["start_m"] + fraction * (item["end_m"] - item["start_m"])
+            mid_km = round(dist_along / 1000.0, 1)
+
+            site_lon = item["start_lon"] + fraction * (item["end_lon"] - item["start_lon"])
+            site_lat = item["start_lat"] + fraction * (item["end_lat"] - item["start_lat"])
+
+            site_id = f"REC-CORR-{item['corridor_id']}-{int(mid_km)}"
+            recommended.append({
+                "site_id": site_id,
+                "name": f"{item['corridor_name']} Waypoint (Km {mid_km})",
+                "corridor_id": item["corridor_id"],
+                "road_class": item["road_class"],
+                "distance_along_km": mid_km,
+                "latitude": round(site_lat, 6),
+                "longitude": round(site_lon, 6),
+                "ports_recommended": 4 if item["road_class"] in ["EXPRESSWAY", "NH"] else 2,
+                "priority_score": round(item["flow_score"] / stations_needed, 2),
+                "confidence": 0.85,
+                "drivers": (
+                    f"FRLM corridor siting ({item['road_class']} weight {item['weight']:.1f}): "
+                    f"divides {gap_km:.1f} km gap into <= {max_spacing_km:.0f} km compliant segments"
+                ),
+                "data_flag": "recommended",
+            })
+            sites_allocated += 1
+
+    return pd.DataFrame(recommended)
 
 
 def rank_and_export_sites(

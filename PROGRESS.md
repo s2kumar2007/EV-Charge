@@ -30,4 +30,5 @@
 - `b17bf91` feat(requirements): outputs/charger_requirements.csv with drivers and data_flag columns
 - `e2774ea` test(optimiser): tiny fictional instance with a known optimal answer
 - `ffa93a6` feat(optimiser): candidate generation along flagged corridors and in high-gap or Gi* hot districts
-- `[pending]` feat(optimiser): max-coverage MILP with PuLP/CBC under a site budget; grid capacity constraint only where real grid data exists
+- `d55f9b4` feat(optimiser): max-coverage MILP with PuLP/CBC under a site budget; grid capacity constraint only where real grid data exists
+- `[pending]` feat(optimiser): simplified FRLM-style corridor siting with road class proxy
