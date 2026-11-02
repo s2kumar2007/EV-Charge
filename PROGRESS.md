@@ -40,4 +40,4 @@
 - `17f99cd` feat(dashboard): district drill-down panel
 - `3c2ddda` feat(dashboard): what-if slider wired to /whatif
 - `32753d3` fix(dashboard): indicative warnings for small samples, no EV data state
-- `[pending]` feat: run_dashboard.py starting server and printing URL
+- `0e5acc6` feat: run_dashboard.py starting server and printing URL
