@@ -27,6 +27,33 @@ def make_synthetic_logistic_series(n_months: int = 36, L: float = 200000.0, k: f
     return pd.Series(monthly, index=dates, name="ev_registrations")
 
 
+def test_load_monthly_vahan_valid_and_reject_annual(tmp_path):
+    """Verify loader accepts monthly intervals and rejects annual or irregular timestamps."""
+    # 1. Valid monthly series
+    valid_csv = tmp_path / "valid_monthly.csv"
+    valid_csv.write_text(
+        "date,state,district,ev_total,data_flag\n"
+        "2023-01-01,Tamil Nadu,Chennai,500,real\n"
+        "2023-02-01,Tamil Nadu,Chennai,600,real\n"
+        "2023-03-01,Tamil Nadu,Chennai,750,real\n"
+    )
+    df, meta = load_monthly_vahan(str(valid_csv))
+    assert len(df) == 3
+    assert meta["status"] == "ok"
+    assert meta["granularity"] == "monthly"
+
+    # 2. Annual series must be rejected
+    annual_csv = tmp_path / "annual.csv"
+    annual_csv.write_text(
+        "date,state,district,ev_total,data_flag\n"
+        "2021-01-01,Tamil Nadu,Chennai,1000,real\n"
+        "2022-01-01,Tamil Nadu,Chennai,2500,real\n"
+        "2023-01-01,Tamil Nadu,Chennai,5000,real\n"
+    )
+    with pytest.raises(ValueError, match="Invalid series frequency"):
+        load_monthly_vahan(str(annual_csv))
+
+
 @pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(forecast)")
 def test_logistic_fit_synthetic_curve():
     """Verify logistic curve fitting and parameter recovery on known synthetic data."""

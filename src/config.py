@@ -65,6 +65,16 @@ CORRIDOR_OUTPUT_CSV = "corridor_gaps.csv"
 CORRIDOR_OUTPUT_GEOJSON = "corridor_gaps.geojson"
 CORRIDOR_PRIORITY_ID = "NH-48"              # Priority corridor for demo (Chennai-Vellore-Bengaluru)
 
+# ---- EV Adoption Forecasting ---------------------------------------------
+VAHAN_MONTHLY_FILE = "vahan_monthly.csv"
+VAHAN_MONTHLY_TEMPLATE = "vahan_monthly_TEMPLATE.csv"
+FORECAST_HORIZON_MONTHS = 36                # 3-year baseline projection horizon
+FORECAST_MIN_TRAIN_MONTHS = 18              # Minimum monthly history needed for backtesting
+FORECAST_SARIMA_MIN_OBS = 24                # Minimum monthly observations needed for SARIMA
+FORECAST_BACKTEST_FILE = "forecast_backtest.csv"
+FORECAST_STATE_FILE = "ev_forecast_state.csv"
+FORECAST_DISTRICT_FILE = "ev_forecast_district.csv"
+
 # ---- Map appearance -------------------------------------------------------
 MAP_TILES = "OpenStreetMap"
 COLOUR_SCALE_PERCENTILE = 95       # colours are capped here so one outlier does not wash out the rest
