@@ -47,3 +47,28 @@ def test_max_coverage_milp_known_optimal():
     assert sol2["total_covered_weight"] == 170.0
     selected_ids2 = set(s["site_id"] for s in sol2["selected_sites"])
     assert selected_ids2 == {"SITE-2", "SITE-3"}
+
+
+def test_generate_candidate_sites_extracts_corridor_and_hotspots():
+    """Verify candidate generation extracts highway gap waypoints and urban hotspots with grid unconstrained."""
+    corridor_gaps = pd.DataFrame([
+        {"corridor_id": "NH-48", "start_distance_m": 0, "end_distance_m": 45000, "spacing_km": 45.0, "flagged": True, "longitude": 79.5, "latitude": 12.8}
+    ])
+    hotspots = pd.DataFrame([
+        {"district": "Vellore", "district_key": "vellore", "hotspot_type": "Hot Spot", "latitude": 12.9, "longitude": 79.1}
+    ])
+    requirements = pd.DataFrame([
+        {"district_key": "vellore", "ports_deficit": 12}
+    ])
+
+    cands = generate_candidate_sites(corridor_gaps, hotspots, requirements)
+    assert len(cands) == 2
+
+    corr_cand = next(c for c in cands if c["site_type"] == "highway_corridor")
+    assert corr_cand["corridor_id"] == "NH-48"
+    assert "grid unconstrained" in corr_cand["drivers"].lower()
+    assert corr_cand["data_flag"] == "candidate"
+
+    urban_cand = next(c for c in cands if c["site_type"] == "urban_hotspot")
+    assert "vellore" in urban_cand["site_id"].lower()
+    assert urban_cand["data_flag"] == "candidate"
