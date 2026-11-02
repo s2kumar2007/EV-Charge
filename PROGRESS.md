@@ -49,7 +49,7 @@
 - `[pending]` chore: final pytest, tag v0.2-finale-ready
 
 ## Roadmap Summary
-- **Total Tests Passing**: 145 passing, 0 failures (pytest 8.x, Python 3.11).
+- **Total Tests Passing**: 146 passing, 0 failures (pytest 8.x, Python 3.11).
 - **Milestones Completed & Tagged**:
   - `m1-corridors` (Highway Corridor Spacing & MoP 2024 compliance)
   - `m2-forecast` (Diffusion & Time Series Forecasting)

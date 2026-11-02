@@ -54,3 +54,12 @@ def test_demo_script_structure():
     assert "Erlang C" in content
     assert "What if VAHAN data misses" in content or "unregistered" in content
     assert "Kanchipuram" in content
+
+
+def test_mit_license_exists():
+    """Verify LICENSE file exists at repo root and contains MIT license header."""
+    lic_file = ROOT / "LICENSE"
+    assert lic_file.exists(), "LICENSE must exist at repo root"
+    content = lic_file.read_text(encoding="utf-8")
+    assert "MIT License" in content
+    assert "Copyright (c) 2026" in content
