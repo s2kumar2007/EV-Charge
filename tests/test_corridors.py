@@ -54,6 +54,44 @@ def test_snap_chargers_metric_projection():
     assert snapped.iloc[0]["distance_along_m"] > 0
 
 
+def test_corridor_dual_confidence_run():
+    """Verify dual-run (all chargers vs high confidence) flags larger gaps when low-confidence sites are excluded."""
+    from corridors import analyze_corridors
+
+    corridor_geom = LineString([(80.0, 13.0), (80.0, 13.9)])  # ~100 km north-south line
+    corridors_gdf = gpd.GeoDataFrame([
+        {"corridor_id": "TEST-DUAL", "corridor_name": "Dual Test Line", "geometry": corridor_geom}
+    ], crs="EPSG:4326")
+
+    # Three chargers:
+    # 1. Near start (high confidence)
+    # 2. Midway (low confidence 0.3)
+    # 3. Near end (high confidence)
+    chargers_df = pd.DataFrame([
+        {"id": "CH1", "name": "Start Site", "longitude": 80.001, "latitude": 13.1, "confidence": 0.9, "data_flag": "real"},
+        {"id": "CH2_LOW", "name": "Mid Site Low Conf", "longitude": 80.001, "latitude": 13.5, "confidence": 0.3, "data_flag": "real"},
+        {"id": "CH3", "name": "End Site", "longitude": 80.001, "latitude": 13.8, "confidence": 0.95, "data_flag": "real"},
+    ])
+
+    df, gdf = analyze_corridors(
+        corridors_gdf=corridors_gdf,
+        chargers_df=chargers_df,
+        confidence_cutoff=0.5,
+        save_outputs=False,
+    )
+
+    assert not df.empty
+    modes = set(df["filter_mode"])
+    assert modes == {"all_chargers", "high_confidence"}
+
+    df_all = df[df["filter_mode"] == "all_chargers"]
+    df_hc = df[df["filter_mode"] == "high_confidence"]
+
+    # When low-confidence site is excluded, the number of segments decreases and max gap increases
+    assert len(df_hc) < len(df_all)
+    assert df_hc["gap_km"].max() > df_all["gap_km"].max()
+
+
 def test_corridor_spacing_fictional_line():
     """Verify consecutive-site spacing and gap flagging on a 100 km fictional corridor."""
     # Fictional straight corridor of length 100,000 meters (100 km) in a Cartesian plane

@@ -201,3 +201,106 @@ def calculate_corridor_spacing(
     gaps_df = pd.DataFrame(rows)
     gaps_gdf = gpd.GeoDataFrame(gaps_df, geometry=geoms, crs="EPSG:4326")
     return gaps_df, gaps_gdf
+
+
+def analyze_corridors(
+    corridors_gdf: Optional[gpd.GeoDataFrame] = None,
+    chargers_df: Optional[pd.DataFrame] = None,
+    confidence_cutoff: float = config.CORRIDOR_CONFIDENCE_CUTOFF,
+    save_outputs: bool = True,
+) -> Tuple[pd.DataFrame, gpd.GeoDataFrame]:
+    """
+    Run corridor spacing analysis twice:
+      1. All snapped chargers
+      2. High-confidence chargers only (confidence >= confidence_cutoff)
+    Outputs are tagged with filter_mode ('all_chargers' or 'high_confidence')
+    and saved to outputs/corridor_gaps.csv and outputs/corridor_gaps.geojson.
+    """
+    ensure_dirs()
+    if corridors_gdf is None:
+        corridors_gdf = load_corridors()
+
+    if chargers_df is None:
+        dedup_path = PROCESSED / "chargers_deduplicated.csv"
+        raw_path = PROCESSED / "chargers_raw.csv"
+        if dedup_path.exists():
+            chargers_df = pd.read_csv(dedup_path)
+        elif raw_path.exists():
+            chargers_df = pd.read_csv(raw_path)
+        else:
+            chargers_df = pd.DataFrame(columns=["id", "name", "latitude", "longitude", "confidence"])
+
+    all_dfs = []
+    all_gdfs = []
+
+    for _, c_row in corridors_gdf.iterrows():
+        c_id = str(c_row["corridor_id"])
+        c_name = str(c_row.get("corridor_name", c_id))
+        c_geom = c_row.geometry
+
+        # Snap all chargers to corridor
+        snapped_all = snap_chargers_to_corridor(
+            corridor_geom=c_geom,
+            chargers_df=chargers_df,
+            buffer_meters=config.CORRIDOR_BUFFER_METERS,
+            metric_crs=config.CORRIDOR_METRIC_CRS,
+        )
+
+        # Run 1: all chargers
+        df_all, gdf_all = calculate_corridor_spacing(
+            corridor_id=c_id,
+            corridor_name=c_name,
+            corridor_geom=c_geom,
+            snapped_chargers=snapped_all,
+            max_gap_km=config.CORRIDOR_MAX_GAP_KM,
+            max_gap_heavy_km=config.CORRIDOR_MAX_GAP_HEAVY_KM,
+            metric_crs=config.CORRIDOR_METRIC_CRS,
+        )
+        df_all["filter_mode"] = "all_chargers"
+        gdf_all["filter_mode"] = "all_chargers"
+        all_dfs.append(df_all)
+        all_gdfs.append(gdf_all)
+
+        # Run 2: high confidence chargers only
+        if "confidence" in snapped_all.columns:
+            snapped_hc = snapped_all[snapped_all["confidence"].astype(float) >= confidence_cutoff].copy()
+        else:
+            snapped_hc = snapped_all.copy()
+
+        df_hc, gdf_hc = calculate_corridor_spacing(
+            corridor_id=c_id,
+            corridor_name=c_name,
+            corridor_geom=c_geom,
+            snapped_chargers=snapped_hc,
+            max_gap_km=config.CORRIDOR_MAX_GAP_KM,
+            max_gap_heavy_km=config.CORRIDOR_MAX_GAP_HEAVY_KM,
+            metric_crs=config.CORRIDOR_METRIC_CRS,
+        )
+        df_hc["filter_mode"] = "high_confidence"
+        gdf_hc["filter_mode"] = "high_confidence"
+        all_dfs.append(df_hc)
+        all_gdfs.append(gdf_hc)
+
+    combined_df = pd.concat(all_dfs, ignore_index=True) if all_dfs else pd.DataFrame()
+    combined_gdf = gpd.GeoDataFrame(pd.concat(all_gdfs, ignore_index=True), crs="EPSG:4326") if all_gdfs else gpd.GeoDataFrame(crs="EPSG:4326")
+
+    if save_outputs and not combined_df.empty:
+        out_csv = OUTPUTS / config.CORRIDOR_OUTPUT_CSV
+        out_geojson = OUTPUTS / config.CORRIDOR_OUTPUT_GEOJSON
+        combined_df.to_csv(out_csv, index=False)
+        combined_gdf.to_file(out_geojson, driver="GeoJSON")
+        print(f"  [corridors] Saved corridor gap analysis to {out_csv.name} and {out_geojson.name}")
+
+    return combined_df, combined_gdf
+
+
+def main():
+    print("=== Corridor Gap Analysis ===")
+    df, gdf = analyze_corridors()
+    print(f"Evaluated {len(df)} corridor segments across {df['corridor_id'].nunique()} corridors.")
+    regular_flags = df[df['flag_regular_gap'] & (df['filter_mode'] == 'high_confidence')]
+    print(f"Identified {len(regular_flags)} gaps exceeding {config.CORRIDOR_MAX_GAP_KM} km under high-confidence filter.")
+
+
+if __name__ == "__main__":
+    main()
