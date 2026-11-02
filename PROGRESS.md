@@ -44,4 +44,5 @@
 - `75ec4fc` feat(validation): outputs/validation_report.md
 - `f4fda87` data: data/samples/spot_check_TEMPLATE.csv with 30 deduplicated chargers
 - `058ec46` docs: DEMO_SCRIPT.md (5-minute Chennai-Vellore-Bengaluru demo)
-- `[pending]` docs: README and CHANGES.md updates
+- `ca1b6fc` docs: README and CHANGES.md updates
+- `[pending]` docs: outputs/feasibility.md with real command output
