@@ -42,4 +42,5 @@
 - `32753d3` fix(dashboard): indicative warnings for small samples, no EV data state
 - `0e5acc6` feat: run_dashboard.py starting server and printing URL
 - `75ec4fc` feat(validation): outputs/validation_report.md
-- `[pending]` data: data/samples/spot_check_TEMPLATE.csv with 30 deduplicated chargers
+- `f4fda87` data: data/samples/spot_check_TEMPLATE.csv with 30 deduplicated chargers
+- `[pending]` docs: DEMO_SCRIPT.md (5-minute Chennai-Vellore-Bengaluru demo)

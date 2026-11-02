@@ -42,3 +42,15 @@ def test_gap_index_sensitivity_stability():
         if not chennai.empty:
             assert chennai["median_rank"].iloc[0] <= 3.0
             assert chennai["top_k_share"].iloc[0] >= 0.90
+
+
+def test_demo_script_structure():
+    """Verify DEMO_SCRIPT.md exists and covers jury walkthrough and anticipated questions."""
+    demo_file = ROOT / "DEMO_SCRIPT.md"
+    assert demo_file.exists(), "DEMO_SCRIPT.md must exist at repo root"
+    content = demo_file.read_text(encoding="utf-8")
+    assert "Chennai – Vellore – Bengaluru" in content
+    assert "Ministry of Power" in content or "MoP" in content
+    assert "Erlang C" in content
+    assert "What if VAHAN data misses" in content or "unregistered" in content
+    assert "Kanchipuram" in content
