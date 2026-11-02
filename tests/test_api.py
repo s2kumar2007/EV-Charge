@@ -38,7 +38,13 @@ def test_get_district_by_key_endpoint(client):
     resp = client.get("/api/districts/chennai")
     assert resp.status_code in (200, 404)
     if resp.status_code == 200:
-        assert resp.json()["district_key"] == "chennai"
+        data = resp.json()
+        assert data["district_key"] == "chennai"
+        # Verify enrichment fields from requirements and hotspots if available
+        if "ports_deficit" in data and data["ports_deficit"] is not None:
+            assert isinstance(data["ports_deficit"], (int, float))
+        if "confidence" in data and data["confidence"] is not None:
+            assert 0.0 <= float(data["confidence"]) <= 1.0
 
     # Non-existent key must return 404
     resp_404 = client.get("/api/districts/non_existent_district_xyz")

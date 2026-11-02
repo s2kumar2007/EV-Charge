@@ -49,12 +49,54 @@ def _clean_records(df: pd.DataFrame) -> List[Dict[str, Any]]:
     return clean_df.to_dict(orient="records")
 
 
+def _load_enriched_districts() -> pd.DataFrame:
+    """Load district gap scores enriched with charger requirements and Gi* hotspots."""
+    gap_file = OUTPUTS / "district_gap_scores.csv"
+    if not gap_file.exists():
+        sample_file = SAMPLES / "vahan_tn_ev_by_district.csv"
+        if sample_file.exists():
+            return pd.read_csv(sample_file)
+        return pd.DataFrame()
+
+    df = pd.read_csv(gap_file)
+
+    # Enrich with charger requirements (deficits, uncertainty percentiles, drivers)
+    req_file = OUTPUTS / "charger_requirements.csv"
+    if req_file.exists() and "district_key" in df.columns:
+        req_df = pd.read_csv(req_file)
+        if "district_key" in req_df.columns:
+            merge_cols = [
+                c for c in [
+                    "district_key", "ports_target", "ports_deficit", "confidence", "drivers",
+                    "ports_target_p10", "ports_target_p50", "ports_target_p90",
+                    "ports_deficit_p10", "ports_deficit_p50", "ports_deficit_p90"
+                ] if c in req_df.columns
+            ]
+            df = df.merge(req_df[merge_cols], on="district_key", how="left", suffixes=("", "_req"))
+            if "drivers_req" in df.columns:
+                df["drivers"] = df["drivers_req"].combine_first(df.get("drivers", pd.Series(dtype=object)))
+                df.drop(columns=["drivers_req"], inplace=True)
+            if "confidence_req" in df.columns:
+                df["confidence"] = df["confidence_req"].combine_first(df.get("confidence", pd.Series(dtype=float)))
+                df.drop(columns=["confidence_req"], inplace=True)
+
+    # Enrich with Gi* spatial hotspot status
+    hot_file = OUTPUTS / "district_hotspots.csv"
+    if hot_file.exists() and "district_key" in df.columns:
+        hot_df = pd.read_csv(hot_file)
+        if "district_key" in hot_df.columns:
+            hot_cols = [c for c in ["district_key", "class", "z_score", "p_value"] if c in hot_df.columns]
+            hot_subset = hot_df[hot_cols].rename(columns={"class": "hotspot_class"})
+            df = df.merge(hot_subset, on="district_key", how="left")
+
+    return df
+
+
 @app.get("/api/districts")
 def get_districts() -> List[Dict[str, Any]]:
     """Retrieve all districts with gap scores and EV infra status."""
-    gap_file = OUTPUTS / "district_gap_scores.csv"
-    if gap_file.exists():
-        df = pd.read_csv(gap_file)
+    df = _load_enriched_districts()
+    if not df.empty:
         return _clean_records(df)
     return []
 
@@ -62,10 +104,9 @@ def get_districts() -> List[Dict[str, Any]]:
 @app.get("/api/districts/{district_key}")
 def get_district(district_key: str) -> Dict[str, Any]:
     """Retrieve single district details by normalized district key."""
-    gap_file = OUTPUTS / "district_gap_scores.csv"
-    if not gap_file.exists():
-        raise HTTPException(status_code=404, detail="District gap scores not found.")
-    df = pd.read_csv(gap_file)
+    df = _load_enriched_districts()
+    if df.empty:
+        raise HTTPException(status_code=404, detail="District data not found.")
     target_key = norm_key(district_key)
     if "district_key" in df.columns:
         match = df[df["district_key"].astype(str).str.lower() == target_key.lower()]

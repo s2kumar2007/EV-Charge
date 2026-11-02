@@ -36,4 +36,5 @@
 - `39c2446` test(api): TestClient tests for each endpoint
 - `a508e7c` feat(api): FastAPI app/main with GET /districts, /districts/{id}, /corridors, /sites
 - `39c8ad4` feat(api): POST /whatif returning recomputed ranges
-- `[pending]` feat(dashboard): static Leaflet page with cached assets, layer toggles, ranked table
+- `2701eaa` feat(dashboard): static Leaflet page with cached assets, layer toggles, ranked table
+- `[pending]` feat(dashboard): district drill-down panel
