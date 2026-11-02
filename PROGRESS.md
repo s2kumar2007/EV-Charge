@@ -27,4 +27,4 @@
 - `4d840d4` feat(requirements): transparent EVs-per-port sizing (configurable), with confidence-weighted existing ports
 - `5a7d857` feat(requirements): M/M/c queueing option for a target waiting time, with documented assumptions
 - `c60d541` feat(requirements): seeded Monte Carlo over undercount, EV growth and charging behaviour, giving ranges
-- `[pending]` feat(requirements): outputs/charger_requirements.csv with drivers and data_flag columns
+- `b17bf91` feat(requirements): outputs/charger_requirements.csv with drivers and data_flag columns
