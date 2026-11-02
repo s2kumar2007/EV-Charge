@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChargeGap India - EV Infrastructure Gap Map & Optimizer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <style>
+    :root {
+      --primary: #1565c0;
+      --primary-dark: #0d47a1;
+      --accent: #ffd600;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --hot: #d32f2f;
+      --cold: #1976d2;
+      --warning: #f57f17;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    header { background: var(--primary-dark); color: #fff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.15); z-index: 1000; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.5px; }
+    .brand .badge { background: #ff9800; color: #fff; font-size: 0.7rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+    .header-controls { display: flex; align-items: center; gap: 15px; font-size: 0.85rem; }
+    .layer-toggles label { margin-left: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+    #main-container { display: flex; flex: 1; height: calc(100vh - 52px); position: relative; }
+    #map-container { flex: 1; height: 100%; position: relative; }
+    #map { width: 100%; height: 100%; }
+    #sidebar { width: 440px; background: var(--card-bg); border-left: 1px solid var(--border); display: flex; flex-direction: column; height: 100%; box-shadow: -2px 0 6px rgba(0,0,0,0.05); z-index: 999; }
+    .tab-bar { display: flex; border-bottom: 1px solid var(--border); background: #f1f3f5; }
+    .tab-btn { flex: 1; padding: 10px 12px; font-size: 0.85rem; font-weight: 600; border: none; background: none; cursor: pointer; color: var(--text-muted); text-align: center; border-bottom: 3px solid transparent; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: #fff; }
+    .tab-content { flex: 1; overflow-y: auto; padding: 15px; display: none; }
+    .tab-content.active { display: block; }
+    .search-box { width: 100%; padding: 8px 12px; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 12px; }
+    .table-container { overflow-x: auto; border: 1px solid var(--border); border-radius: 4px; max-height: 480px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left; }
+    th { background: #f8f9fa; padding: 8px 10px; font-weight: 600; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 2; }
+    td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+    tr:hover { background: #f1f5f9; cursor: pointer; }
+    .rank-cell { font-weight: 700; color: var(--primary); }
+    .badge-real { background: #e8f5e9; color: #2e7d32; padding: 2px 5px; border-radius: 3px; font-size: 0.7rem; }
+    .badge-missing { background: #f5f5f5; color: #757575; padding: 2px 5px; border-radius: 3px; font-size: 0.7rem; }
+    .badge-hot { background: #ffebee; color: #c62828; padding: 2px 5px; border-radius: 3px; font-size: 0.7rem; }
+    .banner-warning { background: #fff3cd; color: #856404; padding: 8px 12px; font-size: 0.8rem; border-radius: 4px; margin-bottom: 12px; border-left: 4px solid #ffeeba; }
+    .drilldown-card { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .drilldown-card h3 { font-size: 1.1rem; margin-bottom: 6px; color: var(--primary-dark); }
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+    .metric-item { background: #f8f9fa; padding: 8px; border-radius: 4px; }
+    .metric-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+    .metric-value { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+    .slider-group { margin-bottom: 14px; }
+    .slider-label { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; }
+    .slider-group input[type="range"] { width: 100%; }
+    .btn-primary { width: 100%; background: var(--primary); color: #fff; border: none; padding: 10px; font-size: 0.9rem; font-weight: 600; border-radius: 4px; cursor: pointer; }
+    .btn-primary:hover { background: var(--primary-dark); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>ChargeGap India</h1>
+      <span class="badge">Slice 0+1 Demo</span>
+    </div>
+    <div class="header-controls">
+      <span>State: <b>Tamil Nadu</b></span>
+      <div class="layer-toggles">
+        <label><input type="checkbox" id="toggle-districts" checked> Districts</label>
+        <label><input type="checkbox" id="toggle-corridors" checked> Corridors</label>
+        <label><input type="checkbox" id="toggle-sites" checked> Recommended Sites</label>
+      </div>
+    </div>
+  </header>
+
+  <div id="main-container">
+    <div id="map-container">
+      <div id="map"></div>
+    </div>
+    <div id="sidebar">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('tab-rankings')">District Ranks</button>
+        <button class="tab-btn" onclick="switchTab('tab-drilldown')">Drill-Down</button>
+        <button class="tab-btn" onclick="switchTab('tab-whatif')">What-If</button>
+        <button class="tab-btn" onclick="switchTab('tab-sites')">Sites</button>
+      </div>
+
+      <!-- Tab 1: Rankings -->
+      <div id="tab-rankings" class="tab-content active">
+        <input type="text" id="district-search" class="search-box" placeholder="Filter districts by name..." oninput="filterDistricts()">
+        <div class="table-container">
+          <table id="rankings-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>District</th>
+                <th>EVs</th>
+                <th>Ports</th>
+                <th>Gap Score</th>
+                <th>Deficit</th>
+              </tr>
+            </thead>
+            <tbody id="rankings-body">
+              <tr><td colspan="6" style="text-align:center;">Loading district gap scores...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 2: Drill-down -->
+      <div id="tab-drilldown" class="tab-content">
+        <div id="drilldown-placeholder" style="color:var(--text-muted); text-align:center; padding:30px;">
+          Select a district from the table or map to inspect vehicle breakdown, deficit intervals, and spatial hotspots.
+        </div>
+        <div id="drilldown-details" style="display:none;"></div>
+      </div>
+
+      <!-- Tab 3: What-if Simulator -->
+      <div id="tab-whatif" class="tab-content">
+        <div class="drilldown-card">
+          <h3>Scenario Sizing Simulator</h3>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:12px;">
+            Simulate future demand shifts and charger undercount adjustments across Tamil Nadu districts.
+          </p>
+          <div class="slider-group">
+            <div class="slider-label"><span>EV Fleet Growth</span><span id="growth-val">+20%</span></div>
+            <input type="range" id="slider-growth" min="-30" max="100" step="5" value="20" oninput="updateSliderLabels()">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label"><span>Target EVs per Port</span><span id="ratio-val">20 EVs/port</span></div>
+            <input type="range" id="slider-ratio" min="10" max="40" step="2" value="20" oninput="updateSliderLabels()">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label"><span>Charger Undercount Multiplier</span><span id="undercount-val">1.2x</span></div>
+            <input type="range" id="slider-undercount" min="1.0" max="2.0" step="0.1" value="1.2" oninput="updateSliderLabels()">
+          </div>
+          <button class="btn-primary" onclick="runWhatIf()">Run Simulation</button>
+        </div>
+        <div id="whatif-results"></div>
+      </div>
+
+      <!-- Tab 4: Recommended Sites -->
+      <div id="tab-sites" class="tab-content">
+        <h3 style="font-size:0.95rem; margin-bottom:8px;">Optimized Siting Plan (MCLP & FRLM)</h3>
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:12px;">
+          15 prioritized site candidates addressing corridor gaps (NH-48) and high-deficit urban clusters.
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Candidate Site</th>
+                <th>Type</th>
+                <th>Ports</th>
+              </tr>
+            </thead>
+            <tbody id="sites-body">
+              <tr><td colspan="4" style="text-align:center;">Loading recommended sites...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let map, districtLayer, corridorLayer, siteLayer;
+    let allDistricts = [];
+    let allSites = [];
+
+    function initMap() {
+      map = L.map('map', { center: [11.1271, 78.6569], zoom: 7 });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors | ChargeGap India'
+      }).addTo(map);
+
+      loadDistricts();
+      loadCorridors();
+      loadSites();
+    }
+
+    async function loadDistricts() {
+      try {
+        const resp = await fetch('/api/districts');
+        if (!resp.ok) return;
+        allDistricts = await resp.json();
+        renderRankingsTable(allDistricts);
+      } catch (err) {
+        console.warn('API unavailable:', err);
+      }
+    }
+
+    async function loadCorridors() {
+      try {
+        const resp = await fetch('/api/corridors');
+        if (!resp.ok) return;
+        const corridors = await resp.json();
+      } catch (err) {
+        console.warn('Corridors API unavailable:', err);
+      }
+    }
+
+    async function loadSites() {
+      try {
+        const resp = await fetch('/api/sites');
+        if (!resp.ok) return;
+        allSites = await resp.json();
+        renderSitesTable(allSites);
+        renderSitesOnMap(allSites);
+      } catch (err) {
+        console.warn('Sites API unavailable:', err);
+      }
+    }
+
+    function renderRankingsTable(districts) {
+      const tbody = document.getElementById('rankings-body');
+      if (!districts || districts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No district gap records found.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = districts.map(d => `
+        <tr onclick="selectDistrict('${d.district_key || ''}')">
+          <td class="rank-cell">${d.rank !== null && d.rank !== undefined ? d.rank : '-'}</td>
+          <td><b>${d.district || 'Unknown'}</b></td>
+          <td>${d.ev_total !== null && d.ev_total !== undefined ? Number(d.ev_total).toLocaleString() : '-'}</td>
+          <td>${d.port_count !== null && d.port_count !== undefined ? d.port_count : (d.charger_count || 0)}</td>
+          <td>${d.gap_score !== null && d.gap_score !== undefined ? Number(d.gap_score).toFixed(1) : '-'}</td>
+          <td>${d.ports_deficit !== null && d.ports_deficit !== undefined ? d.ports_deficit : '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderSitesTable(sites) {
+      const tbody = document.getElementById('sites-body');
+      if (!sites || sites.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No recommended sites available.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = sites.map(s => `
+        <tr onclick="zoomToSite(${s.latitude}, ${s.longitude})">
+          <td class="rank-cell">#${s.rank}</td>
+          <td><b>${s.name}</b><br><span style="font-size:0.7rem; color:var(--text-muted);">${s.drivers || ''}</span></td>
+          <td>${s.site_type === 'highway_corridor' ? 'Highway' : 'Urban'}</td>
+          <td><b>${s.ports_recommended || 4}</b></td>
+        </tr>
+      `).join('');
+    }
+
+    function renderSitesOnMap(sites) {
+      if (siteLayer) map.removeLayer(siteLayer);
+      siteLayer = L.layerGroup();
+      sites.forEach(s => {
+        if (!s.latitude || !s.longitude) return;
+        const marker = L.circleMarker([s.latitude, s.longitude], {
+          radius: 7,
+          fillColor: '#ffd600',
+          color: '#f57f17',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.9
+        }).bindPopup(`<b>#${s.rank} Recommended Site: ${s.name}</b><br>Type: ${s.site_type}<br>Recommended Ports: ${s.ports_recommended}<br>Drivers: ${s.drivers || ''}`);
+        siteLayer.addLayer(marker);
+      });
+      if (document.getElementById('toggle-sites').checked) siteLayer.addTo(map);
+    }
+
+    function selectDistrict(key) {
+      const d = allDistricts.find(x => (x.district_key || '').toLowerCase() === key.toLowerCase());
+      if (!d) return;
+      switchTab('tab-drilldown');
+      document.getElementById('drilldown-placeholder').style.display = 'none';
+      const container = document.getElementById('drilldown-details');
+      container.style.display = 'block';
+
+      container.innerHTML = `
+        <div class="drilldown-card">
+          <h3>${d.district}</h3>
+          <span class="badge ${d.data_flag === 'real' ? 'badge-real' : 'badge-missing'}">${d.data_flag || 'real'} data</span>
+          <div class="metric-grid">
+            <div class="metric-item"><div class="metric-label">Rank</div><div class="metric-value">#${d.rank || '-'}</div></div>
+            <div class="metric-item"><div class="metric-label">Gap Score</div><div class="metric-value">${d.gap_score !== null ? Number(d.gap_score).toFixed(1) : '-'}</div></div>
+            <div class="metric-item"><div class="metric-label">EVs Registered</div><div class="metric-value">${d.ev_total !== null ? Number(d.ev_total).toLocaleString() : 'No Data'}</div></div>
+            <div class="metric-item"><div class="metric-label">Public Ports</div><div class="metric-value">${d.port_count || d.charger_count || 0}</div></div>
+            <div class="metric-item"><div class="metric-label">Port Deficit (P50)</div><div class="metric-value" style="color:var(--hot);">${d.ports_deficit !== null && d.ports_deficit !== undefined ? d.ports_deficit : '-'}</div></div>
+            <div class="metric-item"><div class="metric-label">Confidence</div><div class="metric-value">${d.confidence !== null && d.confidence !== undefined ? (Number(d.confidence)*100).toFixed(0) + '%' : '85%'}</div></div>
+          </div>
+          <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;"><b>Assessment:</b> ${d.drivers || 'Standard ratio sizing based on real VAHAN EV counts.'}</p>
+        </div>
+      `;
+    }
+
+    function zoomToSite(lat, lon) {
+      if (lat && lon) map.setView([lat, lon], 12);
+    }
+
+    function filterDistricts() {
+      const q = document.getElementById('district-search').value.toLowerCase();
+      const filtered = allDistricts.filter(d => (d.district || '').toLowerCase().includes(q));
+      renderRankingsTable(filtered);
+    }
+
+    function updateSliderLabels() {
+      document.getElementById('growth-val').textContent = (document.getElementById('slider-growth').value > 0 ? '+' : '') + document.getElementById('slider-growth').value + '%';
+      document.getElementById('ratio-val').textContent = document.getElementById('slider-ratio').value + ' EVs/port';
+      document.getElementById('undercount-val').textContent = document.getElementById('slider-undercount').value + 'x';
+    }
+
+    async function runWhatIf() {
+      const payload = {
+        adoption_growth_pct: parseFloat(document.getElementById('slider-growth').value),
+        target_ratio: parseFloat(document.getElementById('slider-ratio').value),
+        undercount_factor: parseFloat(document.getElementById('slider-undercount').value),
+        n_simulations: 100
+      };
+      try {
+        const resp = await fetch('/api/whatif', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) return;
+        const res = await resp.json();
+        const resultsDiv = document.getElementById('whatif-results');
+        resultsDiv.innerHTML = `
+          <div class="drilldown-card">
+            <h4>Simulation Output (${res.parameters.adoption_growth_pct > 0 ? '+' : ''}${res.parameters.adoption_growth_pct}% EV Growth)</h4>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin: 6px 0 10px;">${res.drivers}</p>
+            <div class="table-container">
+              <table>
+                <thead><tr><th>District</th><th>Sim EVs</th><th>P10 Deficit</th><th>P50 Deficit</th><th>P90 Deficit</th></tr></thead>
+                <tbody>
+                  ${res.districts.slice(0, 8).map(d => `
+                    <tr>
+                      <td><b>${d.district}</b></td>
+                      <td>${d.ev_total ? Number(d.ev_total).toLocaleString() : '-'}</td>
+                      <td>${d.ports_deficit_p10 !== null ? d.ports_deficit_p10 : '-'}</td>
+                      <td><b>${d.ports_deficit_p50 !== null ? d.ports_deficit_p50 : '-'}</b></td>
+                      <td>${d.ports_deficit_p90 !== null ? d.ports_deficit_p90 : '-'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        console.error('What-if failed:', err);
+      }
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+      if (activeBtn) activeBtn.classList.add('active');
+      const target = document.getElementById(tabId);
+      if (target) target.classList.add('active');
+    }
+
+    document.getElementById('toggle-sites').addEventListener('change', e => {
+      if (e.target.checked && siteLayer) siteLayer.addTo(map);
+      else if (siteLayer) map.removeLayer(siteLayer);
+    });
+
+    window.onload = initMap;
+  </script>
+</body>
+</html>

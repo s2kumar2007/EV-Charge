@@ -35,4 +35,5 @@
 - `62b6773` feat(optimiser): ranked outputs/recommended_sites.csv and map layer with popups
 - `39c2446` test(api): TestClient tests for each endpoint
 - `a508e7c` feat(api): FastAPI app/main with GET /districts, /districts/{id}, /corridors, /sites
-- `[pending]` feat(api): POST /whatif returning recomputed ranges
+- `39c8ad4` feat(api): POST /whatif returning recomputed ranges
+- `[pending]` feat(dashboard): static Leaflet page with cached assets, layer toggles, ranked table

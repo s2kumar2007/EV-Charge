@@ -13,6 +13,14 @@ def client():
     return TestClient(app)
 
 
+def test_get_index_endpoint(client):
+    """Verify GET / returns the static Leaflet dashboard index page."""
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "ChargeGap India" in resp.text
+    assert "id=\"map\"" in resp.text
+
+
 def test_get_districts_endpoint(client):
     """Verify GET /api/districts returns list with standard schema columns."""
     resp = client.get("/api/districts")

@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +29,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+STATIC_DIR = ROOT / "api" / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.get("/", response_class=FileResponse)
+def get_index():
+    """Serve the static Leaflet interactive dashboard."""
+    index_file = STATIC_DIR / "index.html"
+    if not index_file.exists():
+        raise HTTPException(status_code=404, detail="Dashboard index.html not found.")
+    return FileResponse(index_file)
 
 
 def _clean_records(df: pd.DataFrame) -> List[Dict[str, Any]]:
