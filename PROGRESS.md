@@ -15,4 +15,5 @@
 - `850c3e8` feat(corridors): compute consecutive-site spacing and flag stretches above CORRIDOR_MAX_GAP_KM and CORRIDOR_MAX_GAP_HEAVY_KM
 - `643f6e3` feat(corridors): run spacing twice, all chargers and confidence >= cutoff, since OSM undercounts
 - `f60066e` docs(corridors): guideline figures verified against MoP 2024 notification
-- `[pending]` feat(map): "Corridor gaps" layer plus outputs/corridor_gaps.csv and GeoJSON, with legend and popups
+- `b177e1a` feat(map): add Highway corridor gaps layer and pipeline step
+- `[pending]` test(forecast): tests using a known synthetic curve defined inside the test only
