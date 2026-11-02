@@ -38,4 +38,5 @@
 - `39c8ad4` feat(api): POST /whatif returning recomputed ranges
 - `2701eaa` feat(dashboard): static Leaflet page with cached assets, layer toggles, ranked table
 - `17f99cd` feat(dashboard): district drill-down panel
-- `[pending]` feat(dashboard): what-if slider wired to /whatif
+- `3c2ddda` feat(dashboard): what-if slider wired to /whatif
+- `[pending]` fix(dashboard): indicative warnings for small samples, no EV data state

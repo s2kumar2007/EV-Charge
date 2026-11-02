@@ -51,6 +51,18 @@ def test_get_district_by_key_endpoint(client):
     assert resp_404.status_code == 404
 
 
+def test_districts_handles_indicative_and_missing_data_state(client):
+    """Verify API gracefully structures records even when values are None/indicative."""
+    resp = client.get("/api/districts")
+    assert resp.status_code == 200
+    districts = resp.json()
+    for d in districts:
+        assert "district" in d
+        assert "data_flag" in d
+        if d.get("rank") is None:
+            assert d.get("ev_total") is None
+
+
 def test_get_corridors_endpoint(client):
     """Verify GET /api/corridors returns list of highway corridor stretches."""
     resp = client.get("/api/corridors")
