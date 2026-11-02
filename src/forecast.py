@@ -307,9 +307,133 @@ def generate_ensemble_forecast(
     historical_series: pd.Series,
     horizon_months: int = 36,
     n_bootstrap: int = 200,
+    random_seed: Optional[int] = None,
 ) -> pd.DataFrame:
-    """Combine models and compute residual-bootstrap prediction intervals (80% and 95%)."""
-    raise NotImplementedError("Skeleton for test")
+    """
+    Combine models and compute residual-bootstrap prediction intervals (80% and 95%).
+
+    Inputs:
+      historical_series: pd.Series of monthly registrations.
+      horizon_months: number of future projection months.
+      n_bootstrap: number of residual bootstrap iterations.
+      random_seed: PRNG seed for bootstrap reproducibility.
+    Returns:
+      pd.DataFrame with projected months, point estimates, confidence intervals, drivers, and data_flag.
+    """
+    clean_series = historical_series.dropna().astype(float)
+    if len(clean_series) < 4:
+        return pd.DataFrame([{
+            "date": pd.NaT,
+            "year": 0,
+            "month": 0,
+            "ev_predicted": np.nan,
+            "ci_lower_80": np.nan,
+            "ci_upper_80": np.nan,
+            "ci_lower_95": np.nan,
+            "ci_upper_95": np.nan,
+            "models_used": "none",
+            "confidence": 0.0,
+            "drivers": "Insufficient history for forecasting (less than 4 observations)",
+            "data_flag": "insufficient_data",
+        }])
+
+    seed = random_seed or getattr(config, "RANDOM_SEED", 2026)
+    rng = np.random.RandomState(seed)
+
+    # 1. Fit individual models
+    log_res = fit_logistic_model(clean_series, horizon_months=horizon_months)
+    sar_res = fit_sarima_model(clean_series, horizon_months=horizon_months)
+
+    models_succeeded = []
+    preds = []
+    weights = []
+
+    if log_res.get("status") == "ok":
+        models_succeeded.append("logistic")
+        preds.append(log_res["forecast"]["ev_predicted"].values)
+        weights.append(0.60 if sar_res.get("status") == "ok" else 1.0)
+
+    if sar_res.get("status") == "ok":
+        models_succeeded.append("sarima")
+        preds.append(sar_res["forecast"]["ev_predicted"].values)
+        weights.append(0.40)
+
+    if not models_succeeded:
+        return pd.DataFrame([{
+            "date": pd.NaT,
+            "year": 0,
+            "month": 0,
+            "ev_predicted": np.nan,
+            "ci_lower_80": np.nan,
+            "ci_upper_80": np.nan,
+            "ci_lower_95": np.nan,
+            "ci_upper_95": np.nan,
+            "models_used": "none",
+            "confidence": 0.0,
+            "drivers": f"All forecasting models failed: logistic={log_res.get('reason')}",
+            "data_flag": "failed",
+        }])
+
+    norm_weights = np.array(weights) / np.sum(weights)
+    ensemble_pred = np.zeros(horizon_months, dtype=float)
+    for p, w in zip(preds, norm_weights):
+        ensemble_pred += p * w
+    ensemble_pred = np.clip(ensemble_pred, 0, None)
+
+    # Extract dates from primary model forecast
+    primary_fc = log_res["forecast"] if log_res.get("status") == "ok" else sar_res["forecast"]
+    future_dates = primary_fc["date"]
+    years = primary_fc["year"]
+    months = primary_fc["month"]
+
+    # 2. Residual bootstrap for prediction intervals
+    resids = []
+    if "residuals" in log_res and len(log_res["residuals"]) > 0:
+        diff_res = np.diff(log_res["residuals"], prepend=log_res["residuals"][0])
+        resids.extend(diff_res.tolist())
+    if "residuals" in sar_res and len(sar_res["residuals"]) > 0:
+        resids.extend(sar_res["residuals"].tolist())
+
+    if len(resids) < 3:
+        resids = [0.05 * np.mean(clean_series.values), -0.05 * np.mean(clean_series.values)]
+
+    resids_arr = np.array(resids)
+    boot_matrix = np.zeros((n_bootstrap, horizon_months), dtype=float)
+    for b in range(n_bootstrap):
+        sampled_noise = rng.choice(resids_arr, size=horizon_months, replace=True)
+        horizon_scaling = np.sqrt(np.arange(1, horizon_months + 1))
+        sim_path = ensemble_pred + (sampled_noise * horizon_scaling)
+        boot_matrix[b, :] = np.clip(sim_path, 0, None)
+
+    ci_lower_80 = np.percentile(boot_matrix, 10, axis=0)
+    ci_upper_80 = np.percentile(boot_matrix, 90, axis=0)
+    ci_lower_95 = np.percentile(boot_matrix, 2.5, axis=0)
+    ci_upper_95 = np.percentile(boot_matrix, 97.5, axis=0)
+
+    # Monotonic interval bounds encompassing point estimate
+    ci_lower_80 = np.minimum(ci_lower_80, ensemble_pred)
+    ci_upper_80 = np.maximum(ci_upper_80, ensemble_pred)
+    ci_lower_95 = np.minimum(ci_lower_95, ci_lower_80)
+    ci_upper_95 = np.maximum(ci_upper_95, ci_upper_80)
+
+    avg_conf = 0.85 if len(models_succeeded) > 1 else (log_res.get("confidence", 0.70) if "logistic" in models_succeeded else 0.65)
+    model_str = "+".join(models_succeeded)
+    drivers = f"Ensemble ({model_str}) with {n_bootstrap}-iteration residual bootstrap intervals"
+
+    return pd.DataFrame({
+        "date": future_dates.values,
+        "year": years.values,
+        "month": months.values,
+        "ev_predicted": np.round(ensemble_pred, 2),
+        "ci_lower_80": np.round(ci_lower_80, 2),
+        "ci_upper_80": np.round(ci_upper_80, 2),
+        "ci_lower_95": np.round(ci_lower_95, 2),
+        "ci_upper_95": np.round(ci_upper_95, 2),
+        "models_used": model_str,
+        "confidence": round(float(avg_conf), 4),
+        "drivers": drivers,
+        "data_flag": "projected",
+    })
 
 
 def rolling_origin_backtest(

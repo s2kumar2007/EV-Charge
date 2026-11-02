@@ -19,4 +19,5 @@
 - `4afa95c` test(forecast): tests using a known synthetic curve defined inside the test only
 - `5b43dca` feat(forecast): loader for monthly VAHAN CSV plus data/raw/vahan_monthly_TEMPLATE.csv
 - `2c69c98` feat(forecast): logistic/Bass diffusion fit (scipy), 3 to 5 year horizon
-- `[pending]` feat(forecast): SARIMA via statsmodels (only when the series is long enough), else skipped with a stated reason
+- `9e46e6a` feat(forecast): SARIMA via statsmodels (only when the series is long enough), else skipped with a stated reason
+- `[pending]` feat(forecast): ensemble plus residual-bootstrap prediction intervals

@@ -86,6 +86,20 @@ def test_sarima_fits_sufficient_series():
     assert (result["forecast"]["ev_predicted"] >= 0).all()
 
 
+def test_generate_ensemble_forecast_with_intervals():
+    """Verify ensemble forecast combines models and computes ordered bootstrap prediction intervals."""
+    series = make_synthetic_logistic_series(n_months=30)
+    fc = generate_ensemble_forecast(series, horizon_months=12, n_bootstrap=80)
+    assert len(fc) == 12
+    assert (fc["ev_predicted"] >= 0).all()
+    # Check interval ordering: lower_95 <= lower_80 <= upper_80 <= upper_95
+    assert (fc["ci_lower_95"] <= fc["ci_lower_80"] + 1e-4).all()
+    assert (fc["ci_lower_80"] <= fc["ev_predicted"] + 1e-4).all()
+    assert (fc["ev_predicted"] <= fc["ci_upper_80"] + 1e-4).all()
+    assert (fc["ci_upper_80"] <= fc["ci_upper_95"] + 1e-4).all()
+    assert fc["data_flag"].iloc[0] == "projected"
+
+
 @pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(forecast)")
 def test_backtest_flags_insufficient_history():
     """Verify backtest returns clear insufficient history diagnostics for short series."""
