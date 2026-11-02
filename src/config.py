@@ -50,6 +50,20 @@ GAP_UNIT = "stations"
 # values between the smallest and largest REAL value, and are flagged "synthetic".
 ALLOW_SYNTHETIC = False
 SYNTHETIC_SEED = 2026
+RANDOM_SEED = 2026
+
+# ---- Highway Corridor Settings --------------------------------------------
+CORRIDOR_CACHE_FILE = "corridors_osm.geojson"
+CORRIDOR_FALLBACK_FILE = "corridors_tamil_nadu.csv"
+CORRIDOR_METRIC_CRS = "EPSG:32644"           # UTM Zone 44N (metric CRS for South India)
+CORRIDOR_BUFFER_METERS = 5000.0             # 5 km buffer from highway centerline to snap public chargers
+CORRIDOR_MAX_GAP_KM = 20.0                  # Regular vehicle gap threshold (MoP 2024 unverified guideline)
+CORRIDOR_MAX_GAP_HEAVY_KM = 100.0           # Heavy-duty/commercial vehicle gap threshold (MoP 2024 unverified guideline)
+CORRIDOR_CONFIDENCE_CUTOFF = 0.5            # Charger confidence cutoff for high-confidence spacing run
+CORRIDOR_GUIDELINE_STATUS = "UNVERIFIED"    # Explicit label for unverified MoP guidelines
+CORRIDOR_OUTPUT_CSV = "corridor_gaps.csv"
+CORRIDOR_OUTPUT_GEOJSON = "corridor_gaps.geojson"
+CORRIDOR_PRIORITY_ID = "NH-48"              # Priority corridor for demo (Chennai-Vellore-Bengaluru)
 
 # ---- Map appearance -------------------------------------------------------
 MAP_TILES = "OpenStreetMap"

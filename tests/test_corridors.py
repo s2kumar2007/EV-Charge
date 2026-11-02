@@ -8,9 +8,28 @@ import geopandas as gpd
 from shapely.geometry import LineString, Point
 
 from corridors import (
+    load_corridors,
     snap_chargers_to_corridor,
     calculate_corridor_spacing,
 )
+
+
+def test_load_corridors_fallback():
+    """Verify loading highway corridors from the audited sample fallback."""
+    corridors = load_corridors(force_fetch=False)
+    assert isinstance(corridors, gpd.GeoDataFrame)
+    assert not corridors.empty
+    assert "corridor_id" in corridors.columns
+    assert "geometry" in corridors.columns
+    assert "data_flag" in corridors.columns
+    assert "source" in corridors.columns
+
+    # Verify Chennai-Vellore-Bengaluru corridor (NH-48) is present
+    nh48 = corridors[corridors["corridor_id"] == "NH-48"]
+    assert len(nh48) == 1
+    geom = nh48.iloc[0].geometry
+    assert isinstance(geom, LineString)
+    assert geom.length > 0
 
 
 @pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(corridors)")
