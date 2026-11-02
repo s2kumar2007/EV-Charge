@@ -1,3 +1,131 @@
+# Latest Verification — 2 November 2026 (Roadmap Milestones 1 to 6 Complete)
+
+This update certifies completion of all 6 milestones on the engineering roadmap for Techfest 2026–27 (Challenge 1: EV Infra Map India). All modules run completely offline, with 145 unit and integration tests passing.
+
+## Implementation Status Table
+
+| Milestone / Feature | Status | Primary Code / Artifact | Verification Mechanism |
+| :--- | :--- | :--- | :--- |
+| **Slice 0: District Gap Scoring** | **IMPLEMENTED** | `src/build_scores.py` | `tests/test_scores.py` (Int64 ranks, nullable EV counts) |
+| **Slice 1: Spatial Hotspots & Index** | **IMPLEMENTED** | `src/gap_index.py`, `src/hotspots.py` | `tests/test_slice1.py` (PySAL Queen Gi*, Moran's I) |
+| **Milestone 1: Highway Corridors** | **IMPLEMENTED** | `src/corridors.py` | `tests/test_corridors.py` (MoP 2024 compliance, UTM 44N) |
+| **Milestone 2: Diffusion Forecasting** | **IMPLEMENTED** | `src/forecast.py` | `tests/test_forecast.py` (Bass/Logistic, SARIMA, bootstrap) |
+| **Milestone 3: Sizing & Queuing Engine** | **IMPLEMENTED** | `src/requirements_model.py` | `tests/test_requirements.py` (Erlang C W_q < 10m, P10-P90) |
+| **Milestone 4: Siting Optimizer** | **IMPLEMENTED** | `src/site_optimiser.py` | `tests/test_optimiser.py` (MCLP/FRLM MILP PuLP/CBC) |
+| **Milestone 5: API & Dashboard** | **IMPLEMENTED** | `api/main.py`, `run_dashboard.py` | `tests/test_api.py` (TestClient endpoints, Leaflet UI) |
+| **Milestone 6: Validation & Audit** | **IMPLEMENTED** | `outputs/validation_report.md` | `tests/test_validation.py`, `DEMO_SCRIPT.md` |
+| **National Multi-State Rollout** | **PARTIAL** | `run_india.py` | Logged in `TODO_MANUAL.md` (needs national VAHAN CSVs) |
+
+---
+
+## Actual Commit Gate Output (`python check.py check`)
+
+```
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-8.3.3, pluggy-1.5.0
+rootdir: C:\Users\K\OneDrive\Documents\chargegap\chargegap
+configfile: pytest.ini
+collected 145 items
+
+........................................................................ [ 49%]
+........................................................................ [ 99%]
+.                                                                        [100%]
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+145 passed, 1 warning in 6.48s
+[GATE] Running Pytest suite: .venv\Scripts\python.exe -m pytest -q
+[GATE] Running Bytecode compilation: .venv\Scripts\python.exe -m compileall -q src api
+[GATE PASS] Commit gate verification succeeded.
+```
+
+---
+
+## Actual Pipeline Output (`python run_all.py`)
+
+```
+--- Step 1: district boundaries ---
+37 districts in Tamil Nadu; new districts may be missing.
+
+--- Step 2: public chargers ---
+[WARNING] Using legacy OSM cache from Slice 0; download date/query metadata unavailable. Use --refresh online to replace it.
+  OCM: no OCM_API_KEY in .env -> using OpenStreetMap only.
+
+--- Step 3a: VAHAN input and template ---
+VAHAN: found (data/samples/vahan_tn_ev_by_district.csv).
+
+--- Step 3b: resolve EV names ---
+  using VAHAN file: data/samples/vahan_tn_ev_by_district.csv
+  name check: 'Kanniyakumari' -> Kanyakumari  [fuzzy]
+
+--- Steps 4 and 5: spatial join and Slice 0 scores ---
+Raw chargers: 220 fetched = 74 inside + 146 outside
+
+--- Step 6: Slice 0 map ---
+Map saved: outputs/tn_gap_map.html; uncached JS/CSS assets: 11
+
+--- Step 7: Slice 0 checks ---
+District count: 37; total KNOWN EVs: 174477.0
+Chargers fetched 220 = 74 inside + 146 outside; OK
+Known ports: 57/220 records
+Most underserved:
+       district  ev_total  charger_count  port_count  gap_score  rank data_flag
+       Tiruppur   14300.0              1           1    14300.0     1      real
+        Madurai    5518.0              1           1     5518.0     2      real
+Tiruchirappalli    4810.0              0           0     4810.0     3      real
+     Dharmapuri    4290.0              1           1     4290.0     4      real
+    Kanyakumari    4209.0              0           0     4209.0     5      real
+
+--- Step 8: deduplication, audit, radius sensitivity and selected scores ---
+Raw chargers: 220 fetched = 74 inside + 146 outside
+Deduplication: 220 raw -> 216 stations; 4 removed
+Deduplicated: 216 = 73 inside + 143 outside
+
+--- Step 9: compatible population ---
+Population accepted: 33/37 districts.
+
+--- Step 10: OSM road and commercial density ---
+roads & pois: national snapshot cached.
+
+--- Step 11: composite index and weight sensitivity ---
+Composite ranked: 33/37; missing indicators are not filled.
+Spearman rho = 0.987; top districts: Chennai (1.0), Tiruppur (2.0), Chengalpattu (3.0).
+
+--- Step 12: Moran's I and Gi* hotspots ---
+Moran's I: I = 0.044, p = 0.056, permutations = 999.
+
+--- Step 12b: highway corridor gaps ---
+[1/4] Loading highway corridor geometries...
+  Loaded 5 corridor stretches (312.4 km total length).
+[2/4] Snapping chargers to corridors...
+  Snapped 12 chargers to highway corridors within 500.0 m buffer.
+[3/4] Computing consecutive site spacing...
+  Flagged 1 highway stretches exceeding 25.0 km threshold.
+  Flagged 2 highway stretches exceeding 20.0 km under high-confidence filter.
+
+--- Step 12c: charger requirements sizing ---
+[1/3] Loading district EV counts and existing public charging capacity...
+[2/3] Computing ratio sizing and Monte Carlo uncertainty ranges...
+[3/3] Saving outputs/charger_requirements.csv...
+Saved 37 district requirements rows to outputs/charger_requirements.csv.
+
+--- Step 12d: site optimization and recommendations ---
+[1/3] Loading corridor gaps, hotspot clusters, and requirements deficits...
+  Allocated 7 corridor charging sites along flagged highways.
+[2/3] Ranking and exporting recommended charging sites...
+Saved 7 recommended sites to outputs/recommended_sites.csv and outputs/recommended_sites.geojson.
+
+--- Step 13: map layers ---
+Map saved: outputs/tn_gap_map.html; uncached JS/CSS assets: 11
+
+--- Step 14: complete checks ---
+All consistency checks passed.
+
+Done. Open outputs/tn_gap_map.html. Missing data remain unranked.
+```
+
+---
+
 # Latest completion checks - 27 October 2026
 
 This section supersedes the earlier PDF/PySAL blockers below.
