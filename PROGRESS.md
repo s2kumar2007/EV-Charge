@@ -39,4 +39,5 @@
 - `2701eaa` feat(dashboard): static Leaflet page with cached assets, layer toggles, ranked table
 - `17f99cd` feat(dashboard): district drill-down panel
 - `3c2ddda` feat(dashboard): what-if slider wired to /whatif
-- `[pending]` fix(dashboard): indicative warnings for small samples, no EV data state
+- `32753d3` fix(dashboard): indicative warnings for small samples, no EV data state
+- `[pending]` feat: run_dashboard.py starting server and printing URL

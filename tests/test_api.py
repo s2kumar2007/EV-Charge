@@ -94,3 +94,10 @@ def test_post_whatif_recomputes_ranges(client):
     assert "summary" in data
     assert "total_p50_port_deficit" in data["summary"]
     assert "total_simulated_evs" in data["summary"]
+
+
+def test_run_dashboard_module_imports():
+    """Verify run_dashboard.py can be imported without execution errors."""
+    import run_dashboard
+    assert hasattr(run_dashboard, "launch_dashboard")
+    assert hasattr(run_dashboard, "main")
