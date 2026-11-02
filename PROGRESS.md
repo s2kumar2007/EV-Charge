@@ -29,4 +29,5 @@
 - `c60d541` feat(requirements): seeded Monte Carlo over undercount, EV growth and charging behaviour, giving ranges
 - `b17bf91` feat(requirements): outputs/charger_requirements.csv with drivers and data_flag columns
 - `e2774ea` test(optimiser): tiny fictional instance with a known optimal answer
-- `[pending]` feat(optimiser): candidate generation along flagged corridors and in high-gap or Gi* hot districts
+- `ffa93a6` feat(optimiser): candidate generation along flagged corridors and in high-gap or Gi* hot districts
+- `[pending]` feat(optimiser): max-coverage MILP with PuLP/CBC under a site budget; grid capacity constraint only where real grid data exists

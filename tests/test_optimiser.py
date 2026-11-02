@@ -14,7 +14,6 @@ from site_optimiser import (
 )
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(optimiser)")
 def test_max_coverage_milp_known_optimal():
     """Verify MILP solver recovers the unique mathematically optimal site on a tiny instance."""
     # 3 demand points: A (weight 100), B (weight 50), C (weight 20)
@@ -72,3 +71,21 @@ def test_generate_candidate_sites_extracts_corridor_and_hotspots():
     urban_cand = next(c for c in cands if c["site_type"] == "urban_hotspot")
     assert "vellore" in urban_cand["site_id"].lower()
     assert urban_cand["data_flag"] == "candidate"
+
+
+def test_max_coverage_respects_real_grid_constraint():
+    """Verify MILP omits candidate when real substation grid capacity is insufficient."""
+    demand = [
+        {"id": "A", "weight": 100.0, "x": 0.0, "y": 0.0},
+        {"id": "B", "weight": 50.0, "x": 10.0, "y": 0.0},
+    ]
+    candidates = [
+        {"site_id": "SITE-1", "name": "Site 1", "x": 0.0, "y": 0.0},
+        {"site_id": "SITE-3", "name": "Site 3", "x": 5.0, "y": 0.0},
+    ]
+    # Site 3 requires 1.0 MW, but real grid capacity is only 0.2 MW
+    grid_caps = {"SITE-3": 0.2}
+    sol = solve_max_coverage_milp(demand, candidates, site_budget=1, coverage_radius_km=7.0, grid_capacity_mw=grid_caps, power_demand_per_site_mw=1.0)
+    assert sol["status"] == "optimal"
+    # Site 3 blocked due to real grid constraint; Site 1 must be picked instead
+    assert [s["site_id"] for s in sol["selected_sites"]] == ["SITE-1"]
