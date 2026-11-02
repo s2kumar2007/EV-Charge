@@ -17,6 +17,7 @@ import load_population
 import load_vahan
 import make_map
 import requirements_model
+import site_optimiser
 
 
 def run_step(label, function, *args, **kwargs):
@@ -58,6 +59,7 @@ def main(argv=None):
         run_step("Step 12: Moran's I and Gi* hotspots", hotspots.main, boundaries, index)
         run_step("Step 12b: highway corridor gaps", corridors.main)
         run_step("Step 12c: charger requirements sizing", requirements_model.main)
+        run_step("Step 12d: site optimization and recommendations", site_optimiser.main)
         run_step("Step 13: map layers", make_map.main, include_slice1=True)
         run_step("Step 14: complete checks", checks.main, include_slice1=True)
     print(f"\nDone. Open outputs/{config.MAP_FILENAME}. Missing data remain unranked.")

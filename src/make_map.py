@@ -169,6 +169,48 @@ def main(include_slice1=True, coverage=None):
                 ).add_to(m)
         except Exception as err:
             print(f"  [warning] Could not add corridor gaps layer to map: {err}")
+    # Recommended New Charging Sites layer (from site optimizer)
+    rec_sites_file = OUTPUTS / getattr(config, "OPTIMISER_OUTPUT_GEOJSON", "recommended_sites.geojson")
+    if include_slice1 and rec_sites_file.exists():
+        try:
+            rec_gdf = gpd.read_file(rec_sites_file)
+            if not rec_gdf.empty:
+                rec_fg = folium.FeatureGroup(name="Recommended New Sites (MCLP & FRLM)", show=True)
+                for _, site_row in rec_gdf.iterrows():
+                    lat = float(site_row.geometry.y)
+                    lon = float(site_row.geometry.x)
+                    rank = site_row.get("rank", 1)
+                    s_name = site_row.get("name", "New Site")
+                    s_type = site_row.get("site_type", "charging_site")
+                    ports = site_row.get("ports_recommended", 4)
+                    drivers = site_row.get("drivers", "")
+                    d_flag = site_row.get("data_flag", "recommended")
+
+                    popup_html = (
+                        f"<div style='font-family: sans-serif; font-size: 13px; min-width: 200px;'>"
+                        f"<b>#{rank} Recommended Site: {html.escape(str(s_name))}</b><br>"
+                        f"<b>Type:</b> {html.escape(str(s_type))}<br>"
+                        f"<b>Recommended Ports:</b> {ports}<br>"
+                        f"<b>Drivers:</b> {html.escape(str(drivers))}<br>"
+                        f"<b>Data Flag:</b> {html.escape(str(d_flag))}"
+                        f"</div>"
+                    )
+
+                    folium.CircleMarker(
+                        location=[lat, lon],
+                        radius=7,
+                        color="#f57f17",
+                        fill=True,
+                        fill_color="#ffd600",
+                        fill_opacity=0.9,
+                        weight=2,
+                        popup=folium.Popup(popup_html, max_width=300),
+                        tooltip=f"#{rank} {s_name} ({ports} ports)",
+                    ).add_to(rec_fg)
+                rec_fg.add_to(m)
+        except Exception as err:
+            print(f"  [warning] Could not add recommended sites layer to map: {err}")
+
     folium.LayerControl(collapsed=False).add_to(m)
     synthetic = int(districts.data_flag.astype(str).str.contains("synthetic", case=False).sum())
     missing = int(districts.ev_total.isna().sum())
