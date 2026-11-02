@@ -27,3 +27,5 @@ geoBoundaries-IND-ADM2.geojson
 htmlcov/
 .ruff_cache/
 tmp/
+build_project_report.py
+capture_submission.ps1

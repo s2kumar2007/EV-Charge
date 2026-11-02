@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 import config
 import build_scores
 import checks
+import corridors
 import fetch_chargers
 import fetch_indicators
 import gap_index
@@ -54,6 +55,7 @@ def main(argv=None):
         osm = run_step("Step 10: OSM road and commercial density", fetch_indicators.main, boundaries)
         index = run_step("Step 11: composite index and weight sensitivity", gap_index.main, selected, population, osm)
         run_step("Step 12: Moran's I and Gi* hotspots", hotspots.main, boundaries, index)
+        run_step("Step 12b: highway corridor gaps", corridors.main)
         run_step("Step 13: map layers", make_map.main, include_slice1=True)
         run_step("Step 14: complete checks", checks.main, include_slice1=True)
     print(f"\nDone. Open outputs/{config.MAP_FILENAME}. Missing data remain unranked.")
