@@ -91,3 +91,28 @@ def test_size_ports_erlang_c_finds_correct_capacity():
     assert res["expected_wait_minutes"] <= 10.0
     assert "M/M/c queue" in res["assumptions"]
     assert "Poisson arrivals" in res["assumptions"]
+
+
+def test_monte_carlo_requirements_quantifies_uncertainty():
+    """Verify Monte Carlo simulation quantifies uncertainty bounds and degrades gracefully on missing data."""
+    districts = pd.DataFrame([
+        {"district": "DistA", "district_key": "dista", "ev_total": 1200, "port_count": 10, "avg_confidence": 0.8, "data_flag": "real"},
+        {"district": "DistB", "district_key": "distb", "ev_total": np.nan, "port_count": 0, "avg_confidence": 0.0, "data_flag": "missing"},
+    ])
+    mc1 = monte_carlo_charger_requirements(districts, n_simulations=200, random_seed=2026)
+    mc2 = monte_carlo_charger_requirements(districts, n_simulations=200, random_seed=2026)
+
+    # Deterministic reproducibility check
+    pd.testing.assert_frame_equal(mc1, mc2)
+
+    # Uncertainty bounds ordering: P10 <= P50 <= P90
+    a_row = mc1[mc1["district_key"] == "dista"].iloc[0]
+    assert a_row["ports_deficit_p10"] <= a_row["ports_deficit_p50"]
+    assert a_row["ports_deficit_p50"] <= a_row["ports_deficit_p90"]
+    assert a_row["ports_target_p10"] <= a_row["ports_target_p90"]
+    assert a_row["data_flag"] == "real"
+
+    # Missing district check
+    b_row = mc1[mc1["district_key"] == "distb"].iloc[0]
+    assert pd.isna(b_row["ports_deficit_p50"])
+    assert b_row["data_flag"] == "missing"

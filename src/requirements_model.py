@@ -208,5 +208,75 @@ def monte_carlo_charger_requirements(
     n_simulations: int = 500,
     random_seed: Optional[int] = None,
 ) -> pd.DataFrame:
-    """Run seeded Monte Carlo simulation over adoption growth, undercount and charging behavior."""
-    raise NotImplementedError("Skeleton for test")
+    """
+    Run seeded Monte Carlo simulation over adoption growth, undercount and charging behavior.
+
+    Inputs:
+      district_df: DataFrame with district EV counts and existing port counts.
+      n_simulations: Number of Monte Carlo iterations (default 500).
+      random_seed: PRNG seed for reproducible simulation (default config.RANDOM_SEED).
+    Returns:
+      pd.DataFrame containing median (P50) and uncertainty ranges (P10, P90) per district.
+    """
+    seed = random_seed or getattr(config, "RANDOM_SEED", 2026)
+    rng = np.random.RandomState(seed)
+
+    records = []
+    for _, row in district_df.iterrows():
+        d_name = row.get("district", "Unknown")
+        d_key = row.get("district_key", str(d_name).lower().strip())
+        d_flag = str(row.get("data_flag", "real")).lower()
+        ev_total = row.get("ev_total", np.nan)
+        existing_ports = float(row.get("port_count", row.get("charger_count", 0)))
+        if pd.isna(existing_ports):
+            existing_ports = 0.0
+        conf_score = float(row.get("avg_confidence", row.get("confidence", 0.85)))
+        if pd.isna(conf_score) or conf_score <= 0:
+            conf_score = 0.85
+
+        if d_flag != "real" or pd.isna(ev_total) or ev_total <= 0:
+            records.append({
+                "district": d_name,
+                "district_key": d_key,
+                "ev_total": np.nan,
+                "ports_target_p10": np.nan,
+                "ports_target_p50": np.nan,
+                "ports_target_p90": np.nan,
+                "ports_deficit_p10": np.nan,
+                "ports_deficit_p50": np.nan,
+                "ports_deficit_p90": np.nan,
+                "confidence": 0.0,
+                "drivers": "No EV data available; Monte Carlo range unavailable",
+                "data_flag": d_flag if d_flag != "real" else "missing",
+            })
+            continue
+
+        # Draw uncertainty distributions
+        ev_mult = np.clip(rng.normal(loc=1.15, scale=0.12, size=n_simulations), 0.90, 1.60)
+        undercount = rng.uniform(1.0, 1.8, size=n_simulations)
+        ratios = rng.uniform(16.0, 26.0, size=n_simulations)
+
+        sim_evs = ev_total * ev_mult
+        sim_existing = existing_ports * undercount * conf_score
+        sim_targets = np.ceil(sim_evs / ratios)
+        sim_deficits = np.clip(np.ceil(sim_targets - sim_existing), 0, None)
+
+        p10_t, p50_t, p90_t = np.percentile(sim_targets, [10, 50, 90])
+        p10_d, p50_d, p90_d = np.percentile(sim_deficits, [10, 50, 90])
+
+        records.append({
+            "district": d_name,
+            "district_key": d_key,
+            "ev_total": int(ev_total),
+            "ports_target_p10": int(p10_t),
+            "ports_target_p50": int(p50_t),
+            "ports_target_p90": int(p90_t),
+            "ports_deficit_p10": int(p10_d),
+            "ports_deficit_p50": int(p50_d),
+            "ports_deficit_p90": int(p90_d),
+            "confidence": round(conf_score, 4),
+            "drivers": f"Monte Carlo ({n_simulations} draws): P10={int(p10_d)}, P50={int(p50_d)}, P90={int(p90_d)} deficit ports",
+            "data_flag": "real",
+        })
+
+    return pd.DataFrame(records)
