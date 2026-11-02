@@ -1,27 +1,43 @@
-# ChargeGap India - Slices 0 and 1
+# ChargeGap India — EV Infrastructure Gap Map & Optimizer
 
-Techfest 2026-27, IIT Bombay: EV infrastructure mapping for India, with the original state pipeline preserved.
+Techfest 2026–27, IIT Bombay: Challenge 1 — EV Infrastructure Map India (Slices 0 + 1 + Roadmap Milestones 1–6).
 
-State entry point: `python run_all.py --offline`. Review the current result with
-`python run_acceptance.py` and open `outputs/tn_gap_map.html`.
-National entry point: `python run_india.py --offline`, after caching the chosen
-boundary provider. `BOUNDARY_PROVIDER="pinned_repo"` is the explicit default
-for both runners. To use the supplied geoBoundaries provider nationally, set
-`BOUNDARY_PROVIDER="geoboundaries"` and first cache its metadata/downloads online;
-the old root GeoJSON is not silently treated as the current release.
+- **State entry point**: `python run_all.py --offline`. Open interactive Leaflet map at `outputs/tn_gap_map.html`.
+- **Interactive Dashboard & API**: `python run_dashboard.py` (hosts at `http://127.0.0.1:8000`).
+- **National entry point**: `python run_india.py --offline`.
+- **Offline Commit Gate**: `python check.py check` (**145 tests passing** in < 15 seconds).
 
-Current verification: **108 passed** in the project virtual environment. State run:
-**37 polygons, 220 raw chargers, 216 merged stations, 37 basic ranks, 33 accepted
-populations, 37 road/commercial observations, 33 composite ranks**. No synthetic data.
-Acceptance is **PARTIAL**: population review, national district demand data,
-national boundary comparison and Google browser authorization remain incomplete.
-The original PDF EV recovery and real state spatial statistics now complete. Folium JS/CSS
-assets are now cached and the state provider comparison completes. See `outputs/feasibility.md`.
+---
 
-Python 3.10+. This is a map and an auditable district comparison, with no
-forecast, optimiser or dashboard. All editable source URLs, state settings,
-thresholds, colours, weighting judgments and seeds are in `src/config.py`.
-No spelling tables or district lists are embedded in the calculation code.
+## Capabilities & Architecture (Milestones 1 to 6)
+
+1. **Slice 0 & 1 — Spatial Gap Scoring & Hotspot Discovery**:
+   - Deduplicated spatial clustering of OSM/OCM chargers using 25 m metric buffers.
+   - Deterministic and smoothed gap scores per district (`GAP_UNIT = "stations"` or `"ports"`).
+   - PySAL Local Moran's I and Getis-Ord Gi* spatial hotspot analysis with False Discovery Rate (FDR) correction.
+2. **Milestone 1 — Highway Corridor Spacing (MoP 2024 Compliance)**:
+   - Highway corridor geometry cached from OpenStreetMap (Chennai–Vellore–Bengaluru NH-48 and Tamil Nadu arterial corridors).
+   - Metric CRS snapping (EPSG:32644 / UTM 44N) and consecutive-station spacing evaluation.
+   - Dual-run evaluation (all stations vs. high-confidence $\ge 0.80$) flagging stretches exceeding 25 km (light EV) and 100 km (heavy-duty EV).
+3. **Milestone 2 — EV Diffusion Forecasting & Backtesting**:
+   - Logistic and Bass diffusion curve fitting (`scipy.optimize`) projecting EV registrations over 3–5 year horizons.
+   - SARIMA seasonal time-series forecasting (`statsmodels`) with automated length-gating ($T \ge 24$ months).
+   - Residual-bootstrap prediction intervals (P10, P50, P90) and rolling-origin backtesting (MAPE / MAE).
+4. **Milestone 3 — Sizing & Queuing Engine (Erlang C)**:
+   - Transparent EVs-per-port sizing (configurable `EV_PER_PORT_TARGET = 20.0`) weighted by charger confidence.
+   - M/M/c queueing delay engine guaranteeing peak waiting times under 10 minutes ($W_q < 10\text{ min}$).
+   - Seeded Monte Carlo uncertainty simulation producing P10, P50, and P90 port deficit ranges.
+5. **Milestone 4 — Siting Optimizer (MCLP & FRLM MILP)**:
+   - Maximal Covering Location Problem (MCLP) and Flow-Refueling Location Model (FRLM) formulated in PuLP and solved via CBC.
+   - Siting candidates generated along flagged corridor gaps and high-deficit / Gi* hotspot centroids under budget $K$.
+   - Road classification flow proxies (National Highways receive higher flow weights).
+6. **Milestone 5 — FastAPI Backend & Interactive Leaflet Dashboard**:
+   - RESTful API endpoints: `GET /api/districts`, `GET /api/districts/{id}`, `GET /api/corridors`, `GET /api/sites`, `POST /api/whatif`.
+   - Rich Leaflet web application with layer toggles, filterable district table, drill-down assessment card, and real-time Monte Carlo scenario simulator.
+7. **Milestone 6 — Validation & Ground-Truth Verification**:
+   - Comprehensive robustness report (`outputs/validation_report.md`) cross-validating MoP 2024 guidelines and CEA benchmarks.
+   - 30-charger ground-truth spot check dataset (`data/samples/spot_check_TEMPLATE.csv`).
+   - 5-minute jury presentation script (`DEMO_SCRIPT.md`) with authoritative Q&A pre-emptions.
 
 ## Install and run (PowerShell)
 

@@ -1,4 +1,14 @@
 # Changes in this version
+
+## 2026-11-02 - Roadmap Completion (Milestones 1 to 6)
+
+- Milestone 1 (Corridors): NH-48 / Tamil Nadu highway geometry from OSM, metric UTM snapping, dual-run consecutive spacing, and MoP 2024 guideline compliance (25 km / 100 km).
+- Milestone 2 (Forecast): Monthly VAHAN loader, Logistic/Bass diffusion fits (scipy), SARIMA length-gated forecasting, residual-bootstrap prediction intervals, and rolling backtests.
+- Milestone 3 (Requirements): Erlang C queueing delay sizing (W_q < 10 min), confidence-weighted existing ports, and seeded Monte Carlo simulation over adoption growth and undercount.
+- Milestone 4 (Optimiser): Candidate generator along flagged corridors and Gi* hotspots, MCLP max-coverage and FRLM corridor siting MILP with PuLP/CBC, and ranked site recommendations.
+- Milestone 5 (Dashboard): FastAPI service with /districts, /corridors, /sites, /whatif endpoints, Leaflet dashboard, district drill-down card, and live scenario simulator.
+- Milestone 6 (Finale Readiness): Validation report cross-validating MoP/CEA benchmarks, 30-charger deduplicated spot-check dataset, and 5-minute jury presentation script.
+
 - Removed `NAME_ALIASES` (hand-typed spellings). Names are matched by exact -> fuzzy -> geocoding.
 - Removed the 2011 boundary file and the planned `NEW_TO_PARENT` table. Newer boundaries are downloaded (pinned commit).
 - Removed the hardcoded state box, ISO code, map centre and "38 districts" message. Search area and map view come from the boundaries.

@@ -43,4 +43,5 @@
 - `0e5acc6` feat: run_dashboard.py starting server and printing URL
 - `75ec4fc` feat(validation): outputs/validation_report.md
 - `f4fda87` data: data/samples/spot_check_TEMPLATE.csv with 30 deduplicated chargers
-- `[pending]` docs: DEMO_SCRIPT.md (5-minute Chennai-Vellore-Bengaluru demo)
+- `058ec46` docs: DEMO_SCRIPT.md (5-minute Chennai-Vellore-Bengaluru demo)
+- `[pending]` docs: README and CHANGES.md updates
