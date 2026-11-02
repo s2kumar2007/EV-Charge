@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from utils import OUTPUTS, RAW, SAMPLES, ensure_dirs
+from utils import OUTPUTS, PROCESSED, RAW, SAMPLES, ensure_dirs
 
 
 def load_monthly_vahan(
@@ -556,6 +556,114 @@ def rolling_origin_backtest(
 def disaggregate_forecast_to_districts(
     state_forecast_df: pd.DataFrame,
     district_ev_shares: pd.DataFrame,
+    save_output: bool = True,
 ) -> pd.DataFrame:
-    """Convert state-level EV projections to district projections where real shares exist."""
-    raise NotImplementedError("Skeleton for test")
+    """
+    Convert state-level EV projections to district projections where real shares exist.
+
+    Rules:
+      - Only districts with observed real historical EV counts receive future demand.
+      - Missing or synthetic districts are never allocated projected numbers.
+      - Each output row carries year, month, district, district_key, ev_predicted,
+        share_of_state, confidence, drivers, and data_flag.
+    """
+    if state_forecast_df.empty or district_ev_shares.empty:
+        return pd.DataFrame()
+
+    shares_df = district_ev_shares.copy()
+    if "district_key" not in shares_df.columns and "district" in shares_df.columns:
+        from utils import norm_key
+        shares_df["district_key"] = shares_df["district"].apply(norm_key)
+
+    if "data_flag" not in shares_df.columns:
+        shares_df["data_flag"] = "real"
+
+    real_mask = (shares_df["data_flag"] == "real") & (shares_df["ev_total"].notna()) & (shares_df["ev_total"] > 0)
+    total_real = float(shares_df.loc[real_mask, "ev_total"].sum())
+
+    if total_real > 0:
+        shares_df["share_of_state"] = np.where(real_mask, shares_df["ev_total"] / total_real, np.nan)
+    else:
+        shares_df["share_of_state"] = np.nan
+
+    out_records = []
+    for _, state_row in state_forecast_df.iterrows():
+        yr = int(state_row.get("year", 0))
+        mo = int(state_row.get("month", 0))
+        dt = state_row.get("date", None)
+        state_pred = float(state_row.get("state_ev_forecast", state_row.get("ev_predicted", 0.0)))
+        state_conf = float(state_row.get("confidence", 0.75))
+        state_drivers = str(state_row.get("drivers", "State projection"))
+
+        for _, dist_row in shares_df.iterrows():
+            d_name = dist_row.get("district", "Unknown")
+            d_key = dist_row.get("district_key", "")
+            d_flag = str(dist_row.get("data_flag", "missing")).lower()
+            share = dist_row["share_of_state"]
+
+            if pd.notna(share) and share > 0 and d_flag == "real":
+                ev_pred = round(state_pred * share, 2)
+                out_records.append({
+                    "date": dt,
+                    "year": yr,
+                    "month": mo,
+                    "district": d_name,
+                    "district_key": d_key,
+                    "ev_predicted": ev_pred,
+                    "share_of_state": round(float(share), 4),
+                    "confidence": round(state_conf * 0.95, 4),
+                    "drivers": f"Share {share:.2%} of state projection ({state_drivers})",
+                    "data_flag": "real",
+                })
+            else:
+                out_records.append({
+                    "date": dt,
+                    "year": yr,
+                    "month": mo,
+                    "district": d_name,
+                    "district_key": d_key,
+                    "ev_predicted": np.nan,
+                    "share_of_state": np.nan,
+                    "confidence": 0.0,
+                    "drivers": "No historical EV data; excluded from projection allocation",
+                    "data_flag": "missing",
+                })
+
+    res_df = pd.DataFrame(out_records)
+    if save_output:
+        ensure_dirs()
+        out_file = OUTPUTS / getattr(config, "FORECAST_DISTRICT_FILE", "ev_forecast_district.csv")
+        res_df.to_csv(out_file, index=False)
+
+    return res_df
+
+
+def main():
+    """Run EV forecasting pipeline if monthly series is available, or report graceful degradation."""
+    print("[1/3] Loading monthly VAHAN data...")
+    df, meta = load_monthly_vahan()
+    if meta.get("status") != "ok" or df.empty:
+        print(f"Monthly VAHAN data not available: {meta.get('reason')}. Skipping forecast projection.")
+        return
+
+    print(f"[2/3] Fitting forecasting models for {config.STATE_NAME} ({len(df)} monthly observations)...")
+    series = df.set_index("date")["ev_total"] if "date" in df.columns else df["ev_total"]
+    rolling_origin_backtest(series, save_output=True)
+    ensemble_df = generate_ensemble_forecast(series, horizon_months=getattr(config, "FORECAST_HORIZON_MONTHS", 36))
+
+    state_out = OUTPUTS / getattr(config, "FORECAST_STATE_FILE", "ev_forecast_state.csv")
+    ensemble_df.to_csv(state_out, index=False)
+    print(f"Saved state forecast to {state_out}")
+
+    print("[3/3] Disaggregating projections to districts with observed historical shares...")
+    vahan_file = PROCESSED / "vahan_by_district.csv"
+    if vahan_file.exists():
+        dist_shares = pd.read_csv(vahan_file)
+        disaggregate_forecast_to_districts(ensemble_df, dist_shares, save_output=True)
+        print(f"Saved district forecast to {OUTPUTS / getattr(config, 'FORECAST_DISTRICT_FILE', 'ev_forecast_district.csv')}")
+    else:
+        print("Processed district EV shares not found; state forecast saved.")
+
+
+if __name__ == "__main__":
+    main()

@@ -120,7 +120,6 @@ def test_backtest_computes_mape_mae_on_sufficient_series():
     assert (report["mae"] >= 0).all()
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(forecast)")
 def test_disaggregate_forecast_respects_missing_shares():
     """Verify future EV allocations only apply to districts with real positive shares."""
     state_forecast = pd.DataFrame([
