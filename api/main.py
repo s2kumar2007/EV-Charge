@@ -214,12 +214,19 @@ def calculate_whatif(req: WhatIfRequest) -> Dict[str, Any]:
             "drivers": f"What-if ({req.adoption_growth_pct:+g}% EV growth, {req.target_ratio:g} EVs/port): P50 deficit = {int(p50_d)}",
         })
 
+    total_p50_deficit = sum(d["ports_deficit_p50"] for d in results if d["ports_deficit_p50"] is not None)
+    total_evs = sum(d["ev_total"] for d in results if d["ev_total"] is not None)
+
     return {
         "parameters": {
             "adoption_growth_pct": req.adoption_growth_pct,
             "target_ratio": req.target_ratio,
             "undercount_factor": req.undercount_factor,
             "n_simulations": req.n_simulations,
+        },
+        "summary": {
+            "total_simulated_evs": total_evs,
+            "total_p50_port_deficit": total_p50_deficit,
         },
         "districts": results,
         "drivers": f"What-if simulation: {req.adoption_growth_pct:+g}% EV growth, {req.target_ratio:g} EVs/port, {req.undercount_factor:g}x charger undercount",

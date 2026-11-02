@@ -335,10 +335,16 @@
     }
 
     async function runWhatIf() {
+      const growth = parseFloat(document.getElementById('slider-growth').value);
+      const ratio = parseFloat(document.getElementById('slider-ratio').value);
+      const undercount = parseFloat(document.getElementById('slider-undercount').value);
+      const resultsDiv = document.getElementById('whatif-results');
+      resultsDiv.innerHTML = '<div style="text-align:center; padding:15px; font-size:0.8rem; color:var(--text-muted);">Simulating Monte Carlo distribution...</div>';
+
       const payload = {
-        adoption_growth_pct: parseFloat(document.getElementById('slider-growth').value),
-        target_ratio: parseFloat(document.getElementById('slider-ratio').value),
-        undercount_factor: parseFloat(document.getElementById('slider-undercount').value),
+        adoption_growth_pct: growth,
+        target_ratio: ratio,
+        undercount_factor: undercount,
         n_simulations: 100
       };
       try {
@@ -347,24 +353,33 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (!resp.ok) return;
+        if (!resp.ok) {
+          resultsDiv.innerHTML = '<div class="banner-warning">Simulation request returned error.</div>';
+          return;
+        }
         const res = await resp.json();
-        const resultsDiv = document.getElementById('whatif-results');
+        const sumDeficit = res.summary ? res.summary.total_p50_port_deficit.toLocaleString() : '-';
+        const sumEvs = res.summary ? res.summary.total_simulated_evs.toLocaleString() : '-';
+
         resultsDiv.innerHTML = `
           <div class="drilldown-card">
-            <h4>Simulation Output (${res.parameters.adoption_growth_pct > 0 ? '+' : ''}${res.parameters.adoption_growth_pct}% EV Growth)</h4>
-            <p style="font-size:0.75rem; color:var(--text-muted); margin: 6px 0 10px;">${res.drivers}</p>
+            <h4>Simulation Output (${growth > 0 ? '+' : ''}${growth}% Growth)</h4>
+            <div class="metric-grid" style="margin:8px 0;">
+              <div class="metric-item"><div class="metric-label">Simulated EVs</div><div class="metric-value">${sumEvs}</div></div>
+              <div class="metric-item"><div class="metric-label">State P50 Deficit</div><div class="metric-value" style="color:var(--hot);">${sumDeficit} ports</div></div>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px;">${res.drivers}</p>
             <div class="table-container">
               <table>
-                <thead><tr><th>District</th><th>Sim EVs</th><th>P10 Deficit</th><th>P50 Deficit</th><th>P90 Deficit</th></tr></thead>
+                <thead><tr><th>District</th><th>Sim EVs</th><th>P10</th><th>P50 (Deficit)</th><th>P90</th></tr></thead>
                 <tbody>
-                  ${res.districts.slice(0, 8).map(d => `
-                    <tr>
+                  ${res.districts.filter(d => d.ev_total !== null).map(d => `
+                    <tr onclick="selectDistrict('${d.district_key}')">
                       <td><b>${d.district}</b></td>
-                      <td>${d.ev_total ? Number(d.ev_total).toLocaleString() : '-'}</td>
-                      <td>${d.ports_deficit_p10 !== null ? d.ports_deficit_p10 : '-'}</td>
-                      <td><b>${d.ports_deficit_p50 !== null ? d.ports_deficit_p50 : '-'}</b></td>
-                      <td>${d.ports_deficit_p90 !== null ? d.ports_deficit_p90 : '-'}</td>
+                      <td>${Number(d.ev_total).toLocaleString()}</td>
+                      <td>${d.ports_deficit_p10}</td>
+                      <td><b style="color:var(--hot);">${d.ports_deficit_p50}</b></td>
+                      <td>${d.ports_deficit_p90}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -373,6 +388,7 @@
           </div>
         `;
       } catch (err) {
+        resultsDiv.innerHTML = '<div class="banner-warning">What-if simulation network error.</div>';
         console.error('What-if failed:', err);
       }
     }

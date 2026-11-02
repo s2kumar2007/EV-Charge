@@ -79,3 +79,6 @@ def test_post_whatif_recomputes_ranges(client):
     data = resp.json()
     assert "districts" in data
     assert "parameters" in data
+    assert "summary" in data
+    assert "total_p50_port_deficit" in data["summary"]
+    assert "total_simulated_evs" in data["summary"]
