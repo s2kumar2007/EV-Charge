@@ -33,3 +33,11 @@
 - `d55f9b4` feat(optimiser): max-coverage MILP with PuLP/CBC under a site budget; grid capacity constraint only where real grid data exists
 - `88a7b19` feat(optimiser): simplified FRLM-style corridor siting with road class proxy
 - `62b6773` feat(optimiser): ranked outputs/recommended_sites.csv and map layer with popups
+- `39c2446` test(api): TestClient tests for each endpoint
+- `a508e7c` feat(api): FastAPI app/main with GET /districts, /districts/{id}, /corridors, /sites
+- `39c8ad4` feat(api): POST /whatif returning recomputed ranges
+- `2701eaa` feat(dashboard): static Leaflet page with cached assets, layer toggles, ranked table
+- `17f99cd` feat(dashboard): district drill-down panel
+- `3c2ddda` feat(dashboard): what-if slider wired to /whatif
+- `32753d3` fix(dashboard): indicative warnings for small samples, no EV data state
+- `0e5acc6` feat: run_dashboard.py starting server and printing URL
