@@ -6,4 +6,5 @@
 
 ## Progress Log
 - `e294f39` chore: create branch, venv, install; run pytest; record pass count in PROGRESS.md (108 passed)
-- `[pending]` fix: repair any failing tests or environment issues found (silenced external esda DeprecationWarning)
+- `638f14f` fix: repair any failing tests or environment issues found (silenced external esda DeprecationWarning)
+- `[pending]` chore: add Makefile or check.py target check that runs the commit gate (tests + compileall)
