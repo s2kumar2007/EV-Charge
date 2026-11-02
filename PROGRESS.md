@@ -28,3 +28,4 @@
 - `5a7d857` feat(requirements): M/M/c queueing option for a target waiting time, with documented assumptions
 - `c60d541` feat(requirements): seeded Monte Carlo over undercount, EV growth and charging behaviour, giving ranges
 - `b17bf91` feat(requirements): outputs/charger_requirements.csv with drivers and data_flag columns
+- `[pending]` test(optimiser): tiny fictional instance with a known optimal answer
