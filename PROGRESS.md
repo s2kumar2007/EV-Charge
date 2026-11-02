@@ -11,4 +11,5 @@
 - `bea6c6b` docs: create TODO_MANUAL.md (I must supply: national district EV counts, approve the 5 population mapping rows, OCM_API_KEY and GOOGLE_MAPS_API_KEY in .env, verify corridor guideline figures, operator spot-check)
 - `77923f5` test(corridors): failing tests for spacing on a fictional line with known distances
 - `44b5194` feat(corridors): load and cache NH/SH geometry from OSM (Chennai-Vellore-Bengaluru first, then Tamil Nadu); fallback manual corridor CSV in data/samples with source noted
-- `[pending]` feat(corridors): snap chargers to corridor in a metric CRS with a configurable buffer
+- `0f1809c` feat(corridors): snap chargers to corridor in a metric CRS with a configurable buffer
+- `[pending]` feat(corridors): compute consecutive-site spacing and flag stretches above CORRIDOR_MAX_GAP_KM and CORRIDOR_MAX_GAP_HEAVY_KM

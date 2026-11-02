@@ -54,7 +54,6 @@ def test_snap_chargers_metric_projection():
     assert snapped.iloc[0]["distance_along_m"] > 0
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(corridors)")
 def test_corridor_spacing_fictional_line():
     """Verify consecutive-site spacing and gap flagging on a 100 km fictional corridor."""
     # Fictional straight corridor of length 100,000 meters (100 km) in a Cartesian plane
