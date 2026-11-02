@@ -45,4 +45,15 @@
 - `f4fda87` data: data/samples/spot_check_TEMPLATE.csv with 30 deduplicated chargers
 - `058ec46` docs: DEMO_SCRIPT.md (5-minute Chennai-Vellore-Bengaluru demo)
 - `ca1b6fc` docs: README and CHANGES.md updates
-- `[pending]` docs: outputs/feasibility.md with real command output
+- `6082d15` docs: outputs/feasibility.md with real command output
+- `[pending]` chore: final pytest, tag v0.2-finale-ready
+
+## Roadmap Summary
+- **Total Tests Passing**: 145 passing, 0 failures (pytest 8.x, Python 3.11).
+- **Milestones Completed & Tagged**:
+  - `m1-corridors` (Highway Corridor Spacing & MoP 2024 compliance)
+  - `m2-forecast` (Diffusion & Time Series Forecasting)
+  - `m3-requirements` (Queueing Delay & Sizing Intervals)
+  - `m4-optimiser` (MILP MCLP + FRLM Candidate Siting)
+  - `m5-dashboard` (FastAPI Service & Interactive Leaflet Dashboard)
+  - `m6-finale` / `v0.2-finale-ready` (Validation, Spot Checks, and Jury Readiness)
