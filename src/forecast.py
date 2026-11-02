@@ -202,13 +202,105 @@ def fit_logistic_model(
     }
 
 
+import warnings
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+
 def fit_sarima_model(
     series: pd.Series,
     horizon_months: int = 36,
     seasonal_period: int = 12,
+    min_observations: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Fit SARIMA time series model when series length is sufficient, else skip with reason."""
-    raise NotImplementedError("Skeleton for test")
+    """
+    Fit SARIMA time series model when series length is sufficient, else skip with reason.
+
+    Inputs:
+      series: pd.Series of monthly registrations.
+      horizon_months: forecast horizon in months (default 36).
+      seasonal_period: seasonal cycle length (default 12 for annual seasonality).
+      min_observations: minimum observations required (default config.FORECAST_SARIMA_MIN_OBS or 24).
+    Returns:
+      dict with status ('ok', 'skipped', or 'failed'), forecast df, aic, and diagnostics.
+    """
+    min_obs = min_observations or getattr(config, "FORECAST_SARIMA_MIN_OBS", 24)
+    clean_series = series.dropna().astype(float)
+    n = len(clean_series)
+
+    if n < min_obs:
+        return {
+            "status": "skipped",
+            "reason": f"Insufficient observations for SARIMA: {n} points provided, minimum {min_obs} required for seasonal modeling.",
+            "aic": None,
+            "forecast": pd.DataFrame(),
+            "model": "sarima",
+        }
+
+    try:
+        # Fit SARIMA with robust convergence settings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                mod = SARIMAX(
+                    clean_series.values,
+                    order=(1, 1, 1),
+                    seasonal_order=(1, 0, 0, seasonal_period),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                )
+                res = mod.fit(disp=False, maxiter=100)
+            except Exception:
+                mod = SARIMAX(
+                    clean_series.values,
+                    order=(1, 1, 0),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                )
+                res = mod.fit(disp=False, maxiter=100)
+
+        # Forecast
+        forecast_res = res.get_forecast(steps=horizon_months)
+        pred_vals = np.clip(forecast_res.predicted_mean, 0, None)
+        ci = forecast_res.conf_int(alpha=0.05)
+        ci_matrix = np.asarray(ci)
+        lower_95 = np.clip(ci_matrix[:, 0], 0, None)
+        upper_95 = np.clip(ci_matrix[:, 1], 0, None)
+
+        if isinstance(clean_series.index, pd.DatetimeIndex):
+            last_dt = clean_series.index[-1]
+            future_dates = pd.date_range(start=last_dt + pd.offsets.MonthBegin(1), periods=horizon_months, freq="MS")
+        else:
+            future_dates = pd.date_range(start="2026-01-01", periods=horizon_months, freq="MS")
+
+        forecast_df = pd.DataFrame({
+            "date": future_dates,
+            "year": future_dates.year,
+            "month": future_dates.month,
+            "ev_predicted": pred_vals,
+            "ci_lower_95": lower_95,
+            "ci_upper_95": upper_95,
+            "model": "sarima",
+            "data_flag": "projected",
+            "confidence": 0.75,
+            "drivers": f"SARIMA time series model (AIC={res.aic:.1f})",
+        })
+
+        return {
+            "status": "ok",
+            "aic": float(res.aic),
+            "forecast": forecast_df,
+            "fitted_values": res.fittedvalues,
+            "residuals": res.resid,
+            "model": "sarima",
+        }
+    except Exception as e:
+        return {
+            "status": "failed",
+            "reason": f"SARIMA model fitting error: {e}",
+            "aic": None,
+            "forecast": pd.DataFrame(),
+            "model": "sarima",
+        }
 
 
 def generate_ensemble_forecast(

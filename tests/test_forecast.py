@@ -69,13 +69,21 @@ def test_logistic_fit_synthetic_curve():
     assert "data_flag" in forecast.columns
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(forecast)")
 def test_sarima_handles_short_series_gracefully():
     """Verify SARIMA skips with clear reason when time series is too short."""
     short_series = make_synthetic_logistic_series(n_months=8)
     result = fit_sarima_model(short_series, horizon_months=12)
     assert result["status"] == "skipped"
     assert "insufficient observations" in result["reason"].lower()
+
+
+def test_sarima_fits_sufficient_series():
+    """Verify SARIMA fits and returns positive forecast on sufficient time series."""
+    series = make_synthetic_logistic_series(n_months=26)
+    result = fit_sarima_model(series, horizon_months=12, min_observations=24)
+    assert result["status"] == "ok"
+    assert len(result["forecast"]) == 12
+    assert (result["forecast"]["ev_predicted"] >= 0).all()
 
 
 @pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(forecast)")
