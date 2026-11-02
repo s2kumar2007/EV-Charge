@@ -75,6 +75,14 @@ FORECAST_BACKTEST_FILE = "forecast_backtest.csv"
 FORECAST_STATE_FILE = "ev_forecast_state.csv"
 FORECAST_DISTRICT_FILE = "ev_forecast_district.csv"
 
+# ---- Charger Requirements Model -------------------------------------------
+REQUIREMENTS_EVS_PER_PORT = 20.0            # Baseline ratio: 20 EVs per public charging port (CEA guideline)
+REQUIREMENTS_CONFIDENCE_WEIGHTING = True    # Weight existing ports by confidence score
+REQUIREMENTS_OUTPUT_FILE = "charger_requirements.csv"
+REQUIREMENTS_TARGET_WAIT_MINUTES = 10.0     # Target peak waiting time in queue (minutes)
+REQUIREMENTS_CHARGING_DURATION_MINUTES = 30.0  # Average public fast charge duration (minutes)
+REQUIREMENTS_PEAK_HOUR_RATIO = 0.12         # Fraction of daily public charging demand occurring during peak hour
+
 # ---- Map appearance -------------------------------------------------------
 MAP_TILES = "OpenStreetMap"
 COLOUR_SCALE_PERCENTILE = 95       # colours are capped here so one outlier does not wash out the rest
