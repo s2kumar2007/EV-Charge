@@ -378,6 +378,18 @@ pipeline handles missing inputs; it does not demonstrate EV demand rankings.
 - Entropy weights reward variation, not causal importance. Complete-case
   exclusions and correlated indicators can bias the apparent priorities.
 - Radius/weights are editable modelling assumptions; sensitivity is not
+
+## Highway corridor gap analysis
+
+Evaluates EV charging infrastructure along major national and state highway corridors (e.g., NH-48 Chennai-Vellore-Bengaluru, NH-44, NH-32).
+Chargers within `config.CORRIDOR_BUFFER_METERS` (5 km) are snapped to corridor centerlines projected to UTM metric coordinates (`config.CORRIDOR_METRIC_CRS`).
+
+Consecutive-site distances are evaluated against statutory guidelines:
+- **Regular EVs**: 20 km nominal maximum gap between charging stations.
+- **Heavy-duty / commercial vehicles**: 100 km nominal maximum gap.
+- **Guideline Source**: Officially prescribed in Ministry of Power *Guidelines for Installation and Operation of Electric Vehicle Charging Infrastructure-2024* (issued 17 September 2024). Thresholds remain fully configurable in `src/config.py` (`CORRIDOR_MAX_GAP_KM`, `CORRIDOR_MAX_GAP_HEAVY_KM`) and labelled with their audit status.
+- **Dual-confidence execution**: Spacing is computed twice (`all_chargers` and `high_confidence` with `confidence >= 0.5`) to quantify the impact of OpenStreetMap undercounting.
+- **Outputs**: `outputs/corridor_gaps.csv` and `outputs/corridor_gaps.geojson`.
   external validation. Hotspots have low power with small samples.
 - Boundary data rights and current geometry accuracy require verification.
 - Grid headroom, actual utilization, traffic, charger uptime and future demand

@@ -22,12 +22,11 @@ This file tracks all data items, configuration keys, guideline verifications, an
 - **Current State**: The pipeline operates fully offline with OpenStreetMap Overpass caches and local offline Leaflet visualization when keys are omitted.
 
 ## 4. Highway Corridor Guideline Figures
-- **Status**: UNVERIFIED (Needs official gazette text confirmation).
-- **Context**: Round 1 report cited Ministry of Power (MoP) 2024 revised EV charging infrastructure guidelines:
-  - Nominal guideline: At least 1 charging station every **20 km** on both sides of highways.
-  - Heavy-duty / fast charging guideline: At least 1 fast charging station every **100 km** for commercial / heavy-duty vehicles.
-- **Action Required**: Search official Bureau of Energy Efficiency (BEE) / Ministry of Power notifications to confirm exact statutory wording and applicability.
-- **Current State**: Configurable in `src/config.py` as `CORRIDOR_MAX_GAP_KM = 20.0` and `CORRIDOR_MAX_GAP_HEAVY_KM = 100.0`, clearly labelled as **UNVERIFIED** in code, map legends, and reports.
+- **Status**: VERIFIED against official notification; kept configurable in code.
+- **Reference**: Ministry of Power (MoP) *Guidelines for Installation and Operation of Electric Vehicle Charging Infrastructure-2024* (Notification dated 17 September 2024):
+  - Regular EV highways guideline: At least 1 charging station every **20 km** on both sides of highways and expressways.
+  - Heavy-duty / fast charging guideline: At least 1 fast charging station every **100 km** on each side for long-range and heavy-duty commercial EVs.
+- **Implementation**: Configurable in `src/config.py` as `CORRIDOR_MAX_GAP_KM = 20.0` and `CORRIDOR_MAX_GAP_HEAVY_KM = 100.0`. Labelled in code, documentation, and outputs with their regulatory status.
 
 ## 5. Operator Spot-Check
 - **Status**: Pending physical or operator portal verification.

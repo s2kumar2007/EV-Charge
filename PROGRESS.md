@@ -13,4 +13,5 @@
 - `44b5194` feat(corridors): load and cache NH/SH geometry from OSM (Chennai-Vellore-Bengaluru first, then Tamil Nadu); fallback manual corridor CSV in data/samples with source noted
 - `0f1809c` feat(corridors): snap chargers to corridor in a metric CRS with a configurable buffer
 - `850c3e8` feat(corridors): compute consecutive-site spacing and flag stretches above CORRIDOR_MAX_GAP_KM and CORRIDOR_MAX_GAP_HEAVY_KM
-- `[pending]` feat(corridors): run spacing twice, all chargers and confidence >= cutoff, since OSM undercounts
+- `643f6e3` feat(corridors): run spacing twice, all chargers and confidence >= cutoff, since OSM undercounts
+- `[pending]` docs(corridors): guideline figures verified against MoP 2024 notification
