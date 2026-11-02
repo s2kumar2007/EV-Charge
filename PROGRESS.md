@@ -33,4 +33,5 @@
 - `d55f9b4` feat(optimiser): max-coverage MILP with PuLP/CBC under a site budget; grid capacity constraint only where real grid data exists
 - `88a7b19` feat(optimiser): simplified FRLM-style corridor siting with road class proxy
 - `62b6773` feat(optimiser): ranked outputs/recommended_sites.csv and map layer with popups
-- `[pending]` test(api): TestClient tests for each endpoint
+- `39c2446` test(api): TestClient tests for each endpoint
+- `[pending]` feat(api): FastAPI app/main with GET /districts, /districts/{id}, /corridors, /sites

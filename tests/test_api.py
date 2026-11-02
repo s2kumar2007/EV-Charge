@@ -13,7 +13,6 @@ def client():
     return TestClient(app)
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(api)")
 def test_get_districts_endpoint(client):
     """Verify GET /api/districts returns list with standard schema columns."""
     resp = client.get("/api/districts")
@@ -26,7 +25,6 @@ def test_get_districts_endpoint(client):
         assert "data_flag" in row
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(api)")
 def test_get_district_by_key_endpoint(client):
     """Verify GET /api/districts/{key} returns single district or 404."""
     resp = client.get("/api/districts/chennai")
@@ -39,7 +37,6 @@ def test_get_district_by_key_endpoint(client):
     assert resp_404.status_code == 404
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(api)")
 def test_get_corridors_endpoint(client):
     """Verify GET /api/corridors returns list of highway corridor stretches."""
     resp = client.get("/api/corridors")
@@ -48,7 +45,6 @@ def test_get_corridors_endpoint(client):
     assert isinstance(data, list)
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(api)")
 def test_get_sites_endpoint(client):
     """Verify GET /api/sites returns recommended priority charging sites."""
     resp = client.get("/api/sites")
