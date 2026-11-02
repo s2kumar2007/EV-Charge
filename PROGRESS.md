@@ -22,4 +22,4 @@
 - `9e46e6a` feat(forecast): SARIMA via statsmodels (only when the series is long enough), else skipped with a stated reason
 - `a964aea` feat(forecast): ensemble plus residual-bootstrap prediction intervals
 - `fe5970a` feat(forecast): rolling-origin backtest reporting MAPE and MAE per model to outputs/forecast_backtest.csv
-- `[pending]` feat(forecast): convert to future EVs per district only where a real district share exists
+- `47cbaa1` feat(forecast): convert to future EVs per district only where a real district share exists
