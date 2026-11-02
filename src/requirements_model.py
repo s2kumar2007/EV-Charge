@@ -148,9 +148,59 @@ def size_ports_erlang_c(
     service_rate: float,
     target_wait_hours: float = 0.1667,  # 10 minutes target
     max_wait_prob: float = 0.15,
-) -> int:
-    """Find minimum number of ports c such that waiting time and wait probability meet target."""
-    raise NotImplementedError("Skeleton for test")
+) -> Dict[str, Any]:
+    """
+    Find minimum number of ports c such that waiting time and wait probability meet target.
+
+    Inputs:
+      arrival_rate: lambda (arrivals per hour).
+      service_rate: mu (service rate per port, arrivals per hour).
+      target_wait_hours: max acceptable queue delay (default 10 min = 0.1667 hr).
+      max_wait_prob: max acceptable probability that an arrival must queue (default 0.15).
+    Returns:
+      dict with 'ports_needed', 'traffic_erlangs', 'utilization', 'wait_probability',
+      'expected_wait_minutes', 'assumptions'.
+    """
+    if arrival_rate <= 0.0 or service_rate <= 0.0:
+        return {
+            "ports_needed": 0,
+            "traffic_erlangs": 0.0,
+            "utilization": 0.0,
+            "wait_probability": 0.0,
+            "expected_wait_minutes": 0.0,
+            "assumptions": "Zero arrival rate; zero ports needed.",
+        }
+
+    A = arrival_rate / service_rate
+    # Smallest c such that rho < 1
+    c = max(1, int(math.floor(A)) + 1)
+
+    while c <= (int(A) + 500):
+        prob_wait = erlang_c_probability(c, A)
+        wait_hr = erlang_c_waiting_time(c, arrival_rate, service_rate)
+        if prob_wait <= max_wait_prob and wait_hr <= target_wait_hours:
+            break
+        c += 1
+
+    prob_wait = erlang_c_probability(c, A)
+    wait_hr = erlang_c_waiting_time(c, arrival_rate, service_rate)
+    utilization = A / float(c)
+
+    assumptions = (
+        f"M/M/c queue assuming Poisson arrivals (lambda={arrival_rate:.2f}/hr) "
+        f"and exponential charging duration (mu={service_rate:.2f}/hr, avg {60.0/service_rate:.1f} min). "
+        f"Target queue waiting time <= {target_wait_hours*60:.1f} min and wait probability <= {max_wait_prob:.0%}."
+    )
+
+    return {
+        "ports_needed": c,
+        "traffic_erlangs": round(A, 3),
+        "utilization": round(utilization, 3),
+        "wait_probability": round(prob_wait, 4),
+        "expected_wait_minutes": round(wait_hr * 60.0, 2),
+        "target_wait_minutes": round(target_wait_hours * 60.0, 1),
+        "assumptions": assumptions,
+    }
 
 
 def monte_carlo_charger_requirements(

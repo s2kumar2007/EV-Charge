@@ -79,3 +79,15 @@ def test_calculate_net_charger_requirements():
     assert pd.isna(c_row["ports_target"])
     assert pd.isna(c_row["ports_deficit"])
     assert c_row["data_flag"] == "missing"
+
+
+def test_size_ports_erlang_c_finds_correct_capacity():
+    """Verify queueing capacity sizing for target wait time and probability with documented assumptions."""
+    # Arrival rate lambda = 5.0/hr, service rate mu = 2.0/hr (A = 2.5 Erlangs)
+    res = size_ports_erlang_c(arrival_rate=5.0, service_rate=2.0, target_wait_hours=0.1667, max_wait_prob=0.15)
+    assert res["ports_needed"] >= 4
+    assert res["utilization"] < 1.0
+    assert res["wait_probability"] <= 0.15
+    assert res["expected_wait_minutes"] <= 10.0
+    assert "M/M/c queue" in res["assumptions"]
+    assert "Poisson arrivals" in res["assumptions"]
