@@ -20,4 +20,5 @@
 - `5b43dca` feat(forecast): loader for monthly VAHAN CSV plus data/raw/vahan_monthly_TEMPLATE.csv
 - `2c69c98` feat(forecast): logistic/Bass diffusion fit (scipy), 3 to 5 year horizon
 - `9e46e6a` feat(forecast): SARIMA via statsmodels (only when the series is long enough), else skipped with a stated reason
-- `[pending]` feat(forecast): ensemble plus residual-bootstrap prediction intervals
+- `a964aea` feat(forecast): ensemble plus residual-bootstrap prediction intervals
+- `[pending]` feat(forecast): rolling-origin backtest reporting MAPE and MAE per model to outputs/forecast_backtest.csv

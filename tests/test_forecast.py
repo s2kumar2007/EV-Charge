@@ -100,14 +100,24 @@ def test_generate_ensemble_forecast_with_intervals():
     assert fc["data_flag"].iloc[0] == "projected"
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(forecast)")
 def test_backtest_flags_insufficient_history():
     """Verify backtest returns clear insufficient history diagnostics for short series."""
     short_series = make_synthetic_logistic_series(n_months=10)
-    report = rolling_origin_backtest(short_series, min_train_months=18, horizon_months=6)
+    report = rolling_origin_backtest(short_series, min_train_months=18, horizon_months=6, save_output=False)
     assert not report.empty
     assert "insufficient history" in report.iloc[0]["drivers"].lower()
     assert report.iloc[0]["data_flag"] == "insufficient_data"
+
+
+def test_backtest_computes_mape_mae_on_sufficient_series():
+    """Verify rolling backtest computes MAPE and MAE on long series."""
+    series = make_synthetic_logistic_series(n_months=24)
+    report = rolling_origin_backtest(series, min_train_months=18, horizon_months=4, save_output=False)
+    assert not report.empty
+    assert "mape" in report.columns
+    assert "mae" in report.columns
+    assert (report["mape"] >= 0).all()
+    assert (report["mae"] >= 0).all()
 
 
 @pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(forecast)")

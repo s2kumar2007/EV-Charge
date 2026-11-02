@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from utils import RAW, SAMPLES
+from utils import OUTPUTS, RAW, SAMPLES, ensure_dirs
 
 
 def load_monthly_vahan(
@@ -438,11 +438,119 @@ def generate_ensemble_forecast(
 
 def rolling_origin_backtest(
     series: pd.Series,
-    min_train_months: int = 18,
-    horizon_months: int = 6,
+    min_train_months: Optional[int] = None,
+    horizon_months: Optional[int] = None,
+    save_output: bool = True,
 ) -> pd.DataFrame:
-    """Run rolling-origin backtest reporting MAPE and MAE per model; flags insufficient history."""
-    raise NotImplementedError("Skeleton for test")
+    """
+    Run rolling-origin backtest reporting MAPE and MAE per model; flags insufficient history.
+
+    Inputs:
+      series: Historical monthly EV registrations pd.Series.
+      min_train_months: Minimum training observations before evaluating first forecast (default 18).
+      horizon_months: Forecast horizon steps to evaluate at each origin (default 6).
+      save_output: If True, writes results to outputs/forecast_backtest.csv.
+    Returns:
+      pd.DataFrame containing backtest metrics per cutoff and model.
+    """
+    min_train = min_train_months or getattr(config, "FORECAST_MIN_TRAIN_MONTHS", 18)
+    h_months = horizon_months or 6
+    clean_series = series.dropna().astype(float)
+    n = len(clean_series)
+
+    if n < (min_train + 1):
+        report = pd.DataFrame([{
+            "origin_index": 0,
+            "origin_date": "none",
+            "model": "none",
+            "horizon_months": h_months,
+            "mae": np.nan,
+            "mape": np.nan,
+            "observations": n,
+            "confidence": 0.0,
+            "drivers": f"Insufficient history for rolling-origin backtest ({n} observations, minimum {min_train + 1} needed)",
+            "data_flag": "insufficient_data",
+        }])
+        if save_output:
+            ensure_dirs()
+            out_file = OUTPUTS / getattr(config, "FORECAST_BACKTEST_FILE", "forecast_backtest.csv")
+            report.to_csv(out_file, index=False)
+        return report
+
+    records = []
+    # Test cutoffs from min_train up to n - 1
+    max_origins = min(n - 1, min_train + 12)
+    for split_idx in range(min_train, max_origins + 1):
+        train_s = clean_series.iloc[:split_idx]
+        actual_h = min(h_months, n - split_idx)
+        if actual_h <= 0:
+            continue
+        test_actual = clean_series.iloc[split_idx : split_idx + actual_h].values
+
+        origin_dt = clean_series.index[split_idx - 1] if isinstance(clean_series.index, pd.DatetimeIndex) else f"T{split_idx}"
+        origin_str = origin_dt.strftime("%Y-%m-%d") if hasattr(origin_dt, "strftime") else str(origin_dt)
+
+        # 1. Logistic model backtest
+        log_res = fit_logistic_model(train_s, horizon_months=actual_h)
+        if log_res.get("status") == "ok":
+            pred_vals = log_res["forecast"]["ev_predicted"].iloc[:actual_h].values
+            mae = float(np.mean(np.abs(test_actual - pred_vals)))
+            denom = np.where(test_actual > 0, test_actual, 1.0)
+            mape = float(np.mean(np.abs((test_actual - pred_vals) / denom)) * 100.0)
+            records.append({
+                "origin_index": split_idx,
+                "origin_date": origin_str,
+                "model": "logistic",
+                "horizon_months": actual_h,
+                "mae": round(mae, 2),
+                "mape": round(mape, 2),
+                "observations": split_idx,
+                "confidence": round(max(0.0, min(1.0, 1.0 - (mape / 100.0))), 4),
+                "drivers": f"Logistic fit on {split_idx} points, evaluated over {actual_h} months",
+                "data_flag": "backtest",
+            })
+
+        # 2. SARIMA model backtest (if points sufficient)
+        sar_res = fit_sarima_model(train_s, horizon_months=actual_h, min_observations=20)
+        if sar_res.get("status") == "ok":
+            pred_vals = sar_res["forecast"]["ev_predicted"].iloc[:actual_h].values
+            mae = float(np.mean(np.abs(test_actual - pred_vals)))
+            denom = np.where(test_actual > 0, test_actual, 1.0)
+            mape = float(np.mean(np.abs((test_actual - pred_vals) / denom)) * 100.0)
+            records.append({
+                "origin_index": split_idx,
+                "origin_date": origin_str,
+                "model": "sarima",
+                "horizon_months": actual_h,
+                "mae": round(mae, 2),
+                "mape": round(mape, 2),
+                "observations": split_idx,
+                "confidence": round(max(0.0, min(1.0, 1.0 - (mape / 100.0))), 4),
+                "drivers": f"SARIMA fit on {split_idx} points, evaluated over {actual_h} months",
+                "data_flag": "backtest",
+            })
+
+    if not records:
+        records.append({
+            "origin_index": 0,
+            "origin_date": "none",
+            "model": "none",
+            "horizon_months": h_months,
+            "mae": np.nan,
+            "mape": np.nan,
+            "observations": n,
+            "confidence": 0.0,
+            "drivers": "Models failed during rolling backtest",
+            "data_flag": "failed",
+        })
+
+    report = pd.DataFrame(records)
+    if save_output:
+        ensure_dirs()
+        out_file = OUTPUTS / getattr(config, "FORECAST_BACKTEST_FILE", "forecast_backtest.csv")
+        report.to_csv(out_file, index=False)
+
+    return report
 
 
 def disaggregate_forecast_to_districts(
