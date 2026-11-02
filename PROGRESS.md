@@ -17,4 +17,5 @@
 - `f60066e` docs(corridors): guideline figures verified against MoP 2024 notification
 - `b177e1a` feat(map): add Highway corridor gaps layer and pipeline step
 - `4afa95c` test(forecast): tests using a known synthetic curve defined inside the test only
-- `[pending]` feat(forecast): loader for monthly VAHAN CSV plus data/raw/vahan_monthly_TEMPLATE.csv
+- `5b43dca` feat(forecast): loader for monthly VAHAN CSV plus data/raw/vahan_monthly_TEMPLATE.csv
+- `[pending]` feat(forecast): logistic/Bass diffusion fit (scipy), 3 to 5 year horizon

@@ -54,7 +54,6 @@ def test_load_monthly_vahan_valid_and_reject_annual(tmp_path):
         load_monthly_vahan(str(annual_csv))
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(forecast)")
 def test_logistic_fit_synthetic_curve():
     """Verify logistic curve fitting and parameter recovery on known synthetic data."""
     series = make_synthetic_logistic_series(n_months=36)

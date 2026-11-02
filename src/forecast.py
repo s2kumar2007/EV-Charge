@@ -103,13 +103,103 @@ def load_monthly_vahan(
     }
 
 
+from scipy.optimize import curve_fit
+
+
+def _logistic_curve(t: np.ndarray, L: float, k: float, t0: float) -> np.ndarray:
+    """Standard 3-parameter logistic sigmoid cumulative adoption curve."""
+    return L / (1.0 + np.exp(-np.clip(k * (t - t0), -500, 500)))
+
+
 def fit_logistic_model(
     series: pd.Series,
     horizon_months: int = 36,
     carrying_capacity: Optional[float] = None,
 ) -> Dict[str, Any]:
-    """Fit Logistic / S-curve adoption model to historical EV series."""
-    raise NotImplementedError("Skeleton for test")
+    """
+    Fit Logistic / S-curve adoption model to historical EV series.
+
+    Inputs:
+      series: pd.Series of monthly registrations (positive numbers).
+      horizon_months: Number of months ahead to project (default 36).
+      carrying_capacity: Optional upper ceiling (L). If None, estimated via bounded fit.
+    Returns:
+      dict with keys: 'status', 'r_squared', 'params', 'forecast', 'residuals', 'reason' (if skipped).
+    """
+    clean_series = series.dropna().astype(float)
+    n = len(clean_series)
+    if n < 4:
+        return {
+            "status": "skipped",
+            "reason": f"Insufficient observations for logistic fit: {n} points provided, minimum 4 required.",
+            "r_squared": 0.0,
+            "params": {},
+            "forecast": pd.DataFrame(),
+        }
+
+    t_obs = np.arange(n, dtype=float)
+    y_obs_cum = np.cumsum(clean_series.values)
+    max_cum = float(y_obs_cum[-1])
+
+    # Parameter guesses and bounds
+    if carrying_capacity is not None and carrying_capacity > max_cum:
+        p0 = [carrying_capacity, 0.15, n / 2.0]
+        bounds = ([max_cum, 0.001, -n * 2], [carrying_capacity * 1.5, 2.0, n * 5])
+    else:
+        p0 = [max_cum * 3.0, 0.15, n / 2.0]
+        bounds = ([max_cum * 1.05, 0.001, -n * 2], [max_cum * 100.0, 2.0, n * 5])
+
+    try:
+        popt, _ = curve_fit(_logistic_curve, t_obs, y_obs_cum, p0=p0, bounds=bounds, maxfev=10000)
+        L_fit, k_fit, t0_fit = popt
+    except Exception as e:
+        return {
+            "status": "failed",
+            "reason": f"Logistic curve optimization failed: {e}",
+            "r_squared": 0.0,
+            "params": {},
+            "forecast": pd.DataFrame(),
+        }
+
+    y_fit_cum = _logistic_curve(t_obs, L_fit, k_fit, t0_fit)
+    ss_tot = np.sum((y_obs_cum - np.mean(y_obs_cum)) ** 2)
+    ss_res = np.sum((y_obs_cum - y_fit_cum) ** 2)
+    r2 = 1.0 - (ss_res / ss_tot) if ss_tot > 0 else 0.0
+
+    # Project into future
+    t_future = np.arange(n, n + horizon_months, dtype=float)
+    y_future_cum = _logistic_curve(t_future, L_fit, k_fit, t0_fit)
+    all_cum = np.concatenate(([max_cum], y_future_cum))
+    monthly_pred = np.diff(all_cum)
+    monthly_pred = np.clip(monthly_pred, 0, None)
+
+    # Date handling
+    if isinstance(clean_series.index, pd.DatetimeIndex):
+        last_dt = clean_series.index[-1]
+        future_dates = pd.date_range(start=last_dt + pd.offsets.MonthBegin(1), periods=horizon_months, freq="MS")
+    else:
+        future_dates = pd.date_range(start="2026-01-01", periods=horizon_months, freq="MS")
+
+    forecast_df = pd.DataFrame({
+        "date": future_dates,
+        "year": future_dates.year,
+        "month": future_dates.month,
+        "ev_predicted": monthly_pred,
+        "ev_predicted_cumulative": y_future_cum,
+        "model": "logistic",
+        "data_flag": "projected",
+        "confidence": round(max(0.0, min(1.0, float(r2))), 4),
+        "drivers": f"Logistic diffusion fit (L={L_fit:.0f}, k={k_fit:.4f}, t0={t0_fit:.1f}, R2={r2:.4f})",
+    })
+
+    return {
+        "status": "ok",
+        "r_squared": float(r2),
+        "params": {"L": float(L_fit), "k": float(k_fit), "t0": float(t0_fit)},
+        "forecast": forecast_df,
+        "fitted_values": y_fit_cum,
+        "residuals": y_obs_cum - y_fit_cum,
+    }
 
 
 def fit_sarima_model(
