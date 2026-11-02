@@ -83,6 +83,12 @@ REQUIREMENTS_TARGET_WAIT_MINUTES = 10.0     # Target peak waiting time in queue 
 REQUIREMENTS_CHARGING_DURATION_MINUTES = 30.0  # Average public fast charge duration (minutes)
 REQUIREMENTS_PEAK_HOUR_RATIO = 0.12         # Fraction of daily public charging demand occurring during peak hour
 
+# ---- Site Optimizer Settings ----------------------------------------------
+OPTIMISER_BUDGET_SITES = 15                 # Maximum number of recommended sites to select
+OPTIMISER_OUTPUT_CSV = "recommended_sites.csv"
+OPTIMISER_OUTPUT_GEOJSON = "recommended_sites.geojson"
+OPTIMISER_COVERAGE_RADIUS_KM = 15.0         # Urban site service coverage radius (km)
+
 # ---- Map appearance -------------------------------------------------------
 MAP_TILES = "OpenStreetMap"
 COLOUR_SCALE_PERCENTILE = 95       # colours are capped here so one outlier does not wash out the rest

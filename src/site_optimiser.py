@@ -19,6 +19,11 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 import pulp
+import geopandas as gpd
+from shapely.geometry import Point
+
+import config
+from utils import OUTPUTS, ensure_dirs
 
 
 def _calc_distance_km(p1: Dict[str, Any], p2: Dict[str, Any]) -> float:
@@ -359,6 +364,128 @@ def solve_corridor_frlm(
 def rank_and_export_sites(
     selected_sites: List[Dict[str, Any]],
     save_output: bool = True,
-) -> pd.DataFrame:
-    """Format, rank, and export recommended sites with drivers and data_flag columns."""
-    raise NotImplementedError("Skeleton for test")
+) -> Tuple[pd.DataFrame, gpd.GeoDataFrame]:
+    """
+    Format, rank, and export recommended sites with drivers and data_flag columns.
+
+    Inputs:
+      selected_sites: List of selected candidate site dicts.
+      save_output: If True, writes outputs/recommended_sites.csv and outputs/recommended_sites.geojson.
+    Returns:
+      (DataFrame, GeoDataFrame)
+    """
+    if not selected_sites:
+        empty_df = pd.DataFrame(columns=[
+            "rank", "site_id", "name", "site_type", "corridor_id", "latitude", "longitude",
+            "ports_recommended", "priority_score", "confidence", "drivers", "data_flag",
+        ])
+        empty_gdf = gpd.GeoDataFrame(empty_df, geometry=[], crs="EPSG:4326")
+        return empty_df, empty_gdf
+
+    df = pd.DataFrame(selected_sites)
+    # Sort by priority_score descending
+    if "priority_score" in df.columns:
+        df = df.sort_values(by="priority_score", ascending=False).reset_index(drop=True)
+
+    # 1-based integer rank
+    df["rank"] = np.arange(1, len(df) + 1, dtype="int64")
+
+    # Standard columns
+    cols_order = [
+        "rank", "site_id", "name", "site_type", "corridor_id", "latitude", "longitude",
+        "ports_recommended", "priority_score", "confidence", "drivers", "data_flag",
+    ]
+    for c in cols_order:
+        if c not in df.columns:
+            if c == "ports_recommended":
+                df[c] = 4
+            elif c == "confidence":
+                df[c] = 0.85
+            elif c == "data_flag":
+                df[c] = "recommended"
+            elif c == "corridor_id":
+                df[c] = "none"
+            else:
+                df[c] = ""
+
+    df = df[cols_order]
+
+    # Convert to GeoDataFrame
+    geometry = [Point(xy) for xy in zip(df["longitude"], df["latitude"])]
+    gdf = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:4326")
+
+    if save_output:
+        ensure_dirs()
+        csv_path = OUTPUTS / getattr(config, "OPTIMISER_OUTPUT_CSV", "recommended_sites.csv")
+        geojson_path = OUTPUTS / getattr(config, "OPTIMISER_OUTPUT_GEOJSON", "recommended_sites.geojson")
+
+        df.to_csv(csv_path, index=False)
+        gdf.to_file(geojson_path, driver="GeoJSON")
+        print(f"Saved {len(df)} recommended sites to {csv_path} and {geojson_path}")
+
+    return df, gdf
+
+
+def main():
+    """Run end-to-end site optimization pipeline."""
+    print("[1/3] Loading corridor gaps, hotspot clusters, and requirements deficits...")
+    ensure_dirs()
+    total_budget = getattr(config, "OPTIMISER_BUDGET_SITES", 15)
+    corridor_budget = total_budget // 2
+    urban_budget = total_budget - corridor_budget
+
+    corridor_file = OUTPUTS / "corridor_gaps.csv"
+    hotspots_file = OUTPUTS / "hotspots_summary.csv"
+    req_file = OUTPUTS / "charger_requirements.csv"
+
+    selected_sites = []
+
+    # 1. Highway Corridors FRLM
+    if corridor_file.exists():
+        c_df = pd.read_csv(corridor_file)
+        frlm_df = solve_corridor_frlm(c_df, site_budget=corridor_budget)
+        if not frlm_df.empty:
+            selected_sites.extend(frlm_df.to_dict("records"))
+            print(f"  Allocated {len(frlm_df)} corridor charging sites along flagged highways.")
+
+    # 2. Urban Hotspot & Deficit Max-Coverage MILP
+    if hotspots_file.exists() or req_file.exists():
+        h_df = pd.read_csv(hotspots_file) if hotspots_file.exists() else pd.DataFrame()
+        r_df = pd.read_csv(req_file) if req_file.exists() else pd.DataFrame()
+
+        # Build demand points from requirements or hotspots
+        demand_points = []
+        source_df = r_df if not r_df.empty else h_df
+        for _, r in source_df.iterrows():
+            d_flag = str(r.get("data_flag", "real")).lower()
+            if d_flag == "real":
+                deficit = float(r.get("ports_deficit", r.get("ports_deficit_p50", 10.0)))
+                if pd.notna(deficit) and deficit > 0:
+                    demand_points.append({
+                        "id": str(r.get("district_key", r.get("district", "dist"))),
+                        "weight": deficit,
+                        "latitude": float(r.get("latitude", 13.0)),
+                        "longitude": float(r.get("longitude", 80.0)),
+                    })
+
+        candidates = generate_candidate_sites(None, h_df, r_df)
+        urban_cands = [c for c in candidates if c["site_type"] == "urban_hotspot"]
+        if urban_cands and demand_points:
+            milp_res = solve_max_coverage_milp(
+                demand_points,
+                urban_cands,
+                site_budget=urban_budget,
+                coverage_radius_km=getattr(config, "OPTIMISER_COVERAGE_RADIUS_KM", 15.0),
+            )
+            for s in milp_res["selected_sites"]:
+                s["ports_recommended"] = 6
+                selected_sites.append(s)
+            print(f"  Allocated {len(milp_res['selected_sites'])} urban charging sites via MCLP MILP.")
+
+    print("[2/3] Ranking and exporting recommended charging sites...")
+    df, gdf = rank_and_export_sites(selected_sites, save_output=True)
+    return df
+
+
+if __name__ == "__main__":
+    main()

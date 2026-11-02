@@ -126,3 +126,20 @@ def test_solve_corridor_frlm_allocates_sites_by_flow():
     assert (rec["corridor_id"] == "NH-48").all()
     assert (rec["ports_recommended"] == 4).all()
     assert rec["data_flag"].iloc[0] == "recommended"
+
+
+def test_rank_and_export_sites():
+    """Verify rank_and_export_sites ranks by priority score, assigns 1-based integer rank, and exports valid GeoDataFrame."""
+    sites = [
+        {"site_id": "S1", "name": "Site One", "latitude": 13.0, "longitude": 80.0, "priority_score": 45.0, "ports_recommended": 4, "drivers": "Corridor gap", "data_flag": "recommended"},
+        {"site_id": "S2", "name": "Site Two", "latitude": 12.9, "longitude": 79.1, "priority_score": 85.0, "ports_recommended": 6, "drivers": "Urban hotspot", "data_flag": "recommended"},
+    ]
+    df, gdf = rank_and_export_sites(sites, save_output=False)
+    assert len(df) == 2
+    # S2 must be rank 1 (85.0 > 45.0)
+    assert df.iloc[0]["site_id"] == "S2"
+    assert df.iloc[0]["rank"] == 1
+    assert df.iloc[1]["rank"] == 2
+    assert str(df["rank"].dtype).startswith("int")
+    assert len(gdf) == 2
+    assert gdf.crs == "EPSG:4326"
