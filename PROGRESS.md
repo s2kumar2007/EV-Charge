@@ -69,4 +69,5 @@
 - `c9782a7` chore(phase2): create branch, verify main is green and m6-finale exists, log baseline in PROGRESS.md
 - `69c432c` docs(bayes): specify Bayesian network design and provenance in docs/bayes_design.md
 - `2b88ef8` data(bayes): config/bn_priors.yaml with expert parameters and validation
-- `[pending]` test(bayes): failing tests: CPDs valid, model check passes, evidence changes posterior in the expected direction, missing evidence widens the posterior
+- `d73eb9b` test(bayes): tests for prior validation, model check, directionality, and missing evidence widening
+- `[pending]` feat(bayes): build the network from the YAML priors with the pgmpy version shim

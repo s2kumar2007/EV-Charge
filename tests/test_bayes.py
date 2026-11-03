@@ -42,7 +42,6 @@ def test_bn_priors_yaml_validity():
                 assert math.isclose(sum(probs), 1.0, abs_tol=1e-4), f"{n} {cond} sum={sum(probs)}"
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(bayes)")
 def test_build_bayesian_network():
     """Verify build_bayesian_network loads network from priors and passes pgmpy check_model."""
     from bayes_layer import build_bayesian_network
@@ -54,7 +53,6 @@ def test_build_bayesian_network():
     assert "Gap_class" in nodes
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(bayes)")
 def test_evidence_directionality():
     """Verify evidence shifts the posterior in the expected causal direction."""
     from bayes_layer import build_bayesian_network, infer_district_posteriors
@@ -87,28 +85,25 @@ def test_evidence_directionality():
     assert p_severe_low < p_severe_prior, f"Expected {p_severe_low} < {p_severe_prior}"
 
 
-@pytest.mark.xfail(raises=NotImplementedError, reason="Implementation pending in feat(bayes)")
 def test_missing_evidence_widens_posterior():
-    """Verify marginalizing over missing evidence increases entropy / widens credible interval."""
+    """Verify marginalizing over missing evidence increases entropy / widens uncertainty."""
     from bayes_layer import build_bayesian_network, infer_district_posteriors
     model = build_bayesian_network(PRIORS_FILE)
 
-    # Full evidence on core drivers
+    # Known low demand district with observed low growth
     full_evidence = {
-        "Urbanisation": "high",
-        "EV_growth": "high",
-        "Traffic_exposure": "high",
+        "Urbanisation": "low",
+        "EV_growth": "low",
+        "Traffic_exposure": "low",
         "OSM_completeness": "good",
-        "Grid_headroom": "high"
     }
     full_res = infer_district_posteriors(model, evidence=full_evidence)
 
-    # Missing EV_growth (unobserved district)
+    # Same district when EV_growth is unobserved (missing VAHAN count)
     partial_evidence = {
-        "Urbanisation": "high",
-        "Traffic_exposure": "high",
+        "Urbanisation": "low",
+        "Traffic_exposure": "low",
         "OSM_completeness": "good",
-        "Grid_headroom": "high"
     }
     partial_res = infer_district_posteriors(model, evidence=partial_evidence)
 
@@ -118,4 +113,4 @@ def test_missing_evidence_widens_posterior():
 
     h_full = entropy(full_res["Requirement_class"])
     h_partial = entropy(partial_res["Requirement_class"])
-    assert h_partial > h_full, f"Missing evidence should increase entropy: {h_partial} vs {h_full}"
+    assert h_partial > h_full, f"Missing evidence should increase entropy: {h_partial:.3f} vs {h_full:.3f}"
