@@ -114,3 +114,75 @@ def test_missing_evidence_widens_posterior():
     h_full = entropy(full_res["Requirement_class"])
     h_partial = entropy(partial_res["Requirement_class"])
     assert h_partial > h_full, f"Missing evidence should increase entropy: {h_partial:.3f} vs {h_full:.3f}"
+
+
+def test_discretise_district_row_complete():
+    """Verify discretiser maps continuous indicators to valid discrete node states."""
+    import pandas as pd
+    from bayes_layer import discretise_district_row
+
+    cache = {
+        "urbanisation": (1.0, 5.0),
+        "traffic": (0.5, 1.5),
+        "ev": (500, 2000),
+    }
+
+    # High urban, high traffic, high EV, high confidence
+    row_high = pd.Series({
+        "district_key": "chennai",
+        "commercial_per_km2": 10.0,
+        "road_km_per_km2": 2.5,
+        "ev_total": 5000,
+        "confidence": 0.85,
+        "status": "ok",
+        "data_flag": "real",
+    })
+    ev_high = discretise_district_row(row_high, quantiles_cache=cache)
+    assert ev_high["Urbanisation"] == "high"
+    assert ev_high["Traffic_exposure"] == "high"
+    assert ev_high["EV_growth"] == "high"
+    assert ev_high["OSM_completeness"] == "good"
+    assert ev_high["Grid_headroom"] == "unknown"
+
+
+def test_discretise_district_row_missing_and_synthetic():
+    """Verify missing EV data or synthetic flag results in unobserved EV_growth (marginalized)."""
+    import pandas as pd
+    from bayes_layer import discretise_district_row
+
+    cache = {
+        "urbanisation": (1.0, 5.0),
+        "traffic": (0.5, 1.5),
+        "ev": (500, 2000),
+    }
+
+    # Missing EV data
+    row_no_ev = pd.Series({
+        "district_key": "rural_dist",
+        "commercial_per_km2": 0.2,
+        "road_km_per_km2": 0.3,
+        "ev_total": float("nan"),
+        "confidence": 0.40,
+        "status": "no_data",
+        "data_flag": "real",
+    })
+    ev_no_ev = discretise_district_row(row_no_ev, quantiles_cache=cache)
+    assert "EV_growth" not in ev_no_ev or ev_no_ev["EV_growth"] is None
+    assert ev_no_ev["Urbanisation"] == "low"
+    assert ev_no_ev["Traffic_exposure"] == "low"
+    assert ev_no_ev["OSM_completeness"] == "poor"
+
+    # Synthetic EV row should NOT be treated as observed real EV growth
+    row_synth = pd.Series({
+        "district_key": "synth_dist",
+        "commercial_per_km2": 2.0,
+        "road_km_per_km2": 1.0,
+        "ev_total": 1200,
+        "confidence": 0.60,
+        "status": "ok",
+        "data_flag": "synthetic",
+    })
+    ev_synth = discretise_district_row(row_synth, quantiles_cache=cache)
+    assert "EV_growth" not in ev_synth or ev_synth["EV_growth"] is None
+    assert ev_synth["OSM_completeness"] == "fair"
+

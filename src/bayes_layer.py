@@ -135,12 +135,126 @@ def infer_district_posteriors(
     return results
 
 
+def compute_indicator_quantiles(df: pd.DataFrame) -> Dict[str, Tuple[float, float]]:
+    """
+    Compute state-level tertile cutoffs (33.3% and 66.7%) for continuous district indicators.
+    
+    Indicators:
+      - commercial_per_km2 (urbanisation)
+      - road_km_per_km2 (traffic)
+      - evs_per_100k or ev_total (ev_growth)
+    """
+    cache: Dict[str, Tuple[float, float]] = {}
+
+    if "commercial_per_km2" in df.columns and not df["commercial_per_km2"].dropna().empty:
+        s = df["commercial_per_km2"].dropna()
+        cache["urbanisation"] = (float(s.quantile(0.333)), float(s.quantile(0.667)))
+    else:
+        cache["urbanisation"] = (1.0, 5.0)
+
+    if "road_km_per_km2" in df.columns and not df["road_km_per_km2"].dropna().empty:
+        s = df["road_km_per_km2"].dropna()
+        cache["traffic"] = (float(s.quantile(0.333)), float(s.quantile(0.667)))
+    else:
+        cache["traffic"] = (0.5, 1.5)
+
+    ev_col = "evs_per_100k" if "evs_per_100k" in df.columns else "ev_total"
+    if ev_col in df.columns and not df[ev_col].dropna().empty:
+        # Exclude synthetic rows if present
+        clean_s = df[df.get("data_flag", "") != "synthetic"][ev_col].dropna() if "data_flag" in df.columns else df[ev_col].dropna()
+        if not clean_s.empty:
+            cache["ev"] = (float(clean_s.quantile(0.333)), float(clean_s.quantile(0.667)))
+        else:
+            cache["ev"] = (500.0, 2000.0)
+    else:
+        cache["ev"] = (500.0, 2000.0)
+
+    return cache
+
+
 def discretise_district_row(
-    district_row: pd.Series,
+    district_row: Union[pd.Series, Dict[str, Any]],
     quantiles_cache: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, str]:
-    """Map continuous Phase 1 district metrics to discrete Bayesian network node states."""
-    raise NotImplementedError("Implementation pending in feat(bayes)")
+    """
+    Map continuous Phase 1 district metrics to discrete Bayesian network node states.
+    
+    Nodes populated:
+      - Urbanisation: 'low', 'med', 'high' (from commercial_per_km2)
+      - EV_growth: 'low', 'med', 'high' (from ev_total or evs_per_100k; omitted if missing or synthetic)
+      - Traffic_exposure: 'low', 'med', 'high' (from road_km_per_km2)
+      - OSM_completeness: 'poor', 'fair', 'good' (from confidence)
+      - Grid_headroom: 'low', 'med', 'high', or 'unknown' (explicit unobserved telemetry state)
+    
+    Missing evidence is omitted, allowing the exact inference engine to marginalize over it.
+    """
+    if quantiles_cache is None:
+        quantiles_cache = {
+            "urbanisation": (1.0, 5.0),
+            "traffic": (0.5, 1.5),
+            "ev": (500.0, 2000.0),
+        }
+
+    evidence: Dict[str, str] = {}
+
+    # 1. Urbanisation
+    comm = district_row.get("commercial_per_km2")
+    if comm is not None and not pd.isna(comm):
+        q_low, q_high = quantiles_cache.get("urbanisation", (1.0, 5.0))
+        if float(comm) <= q_low:
+            evidence["Urbanisation"] = "low"
+        elif float(comm) <= q_high:
+            evidence["Urbanisation"] = "med"
+        else:
+            evidence["Urbanisation"] = "high"
+
+    # 2. EV_growth
+    # Strictly respect data honesty: synthetic or missing EV counts must NEVER be treated as real evidence
+    data_flag = str(district_row.get("data_flag", "")).lower()
+    status = str(district_row.get("status", "")).lower()
+    ev_val = district_row.get("evs_per_100k")
+    if ev_val is None or pd.isna(ev_val):
+        ev_val = district_row.get("ev_total")
+
+    if data_flag != "synthetic" and status != "no_data" and ev_val is not None and not pd.isna(ev_val):
+        q_low, q_high = quantiles_cache.get("ev", (500.0, 2000.0))
+        if float(ev_val) <= q_low:
+            evidence["EV_growth"] = "low"
+        elif float(ev_val) <= q_high:
+            evidence["EV_growth"] = "med"
+        else:
+            evidence["EV_growth"] = "high"
+
+    # 3. Traffic_exposure
+    road = district_row.get("road_km_per_km2")
+    if road is not None and not pd.isna(road):
+        q_low, q_high = quantiles_cache.get("traffic", (0.5, 1.5))
+        if float(road) <= q_low:
+            evidence["Traffic_exposure"] = "low"
+        elif float(road) <= q_high:
+            evidence["Traffic_exposure"] = "med"
+        else:
+            evidence["Traffic_exposure"] = "high"
+
+    # 4. OSM_completeness
+    conf = district_row.get("confidence")
+    if conf is not None and not pd.isna(conf):
+        conf_f = float(conf)
+        if conf_f < 0.50:
+            evidence["OSM_completeness"] = "poor"
+        elif conf_f < 0.75:
+            evidence["OSM_completeness"] = "fair"
+        else:
+            evidence["OSM_completeness"] = "good"
+
+    # 5. Grid_headroom
+    grid = district_row.get("grid_headroom")
+    if grid in ("low", "med", "high"):
+        evidence["Grid_headroom"] = grid
+    else:
+        evidence["Grid_headroom"] = "unknown"
+
+    return evidence
 
 
 def compute_credible_interval(

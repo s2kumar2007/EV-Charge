@@ -70,4 +70,5 @@
 - `69c432c` docs(bayes): specify Bayesian network design and provenance in docs/bayes_design.md
 - `2b88ef8` data(bayes): config/bn_priors.yaml with expert parameters and validation
 - `d73eb9b` test(bayes): tests for prior validation, model check, directionality, and missing evidence widening
-- `[pending]` feat(bayes): build the network from the YAML priors with the pgmpy version shim
+- `7363ec3` feat(bayes): build the network from the YAML priors with the pgmpy version shim
+- `[pending]` feat(bayes): discretiser mapping Phase 1 district outputs to node states, with "unknown" handling
