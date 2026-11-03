@@ -73,4 +73,5 @@
 - `7363ec3` feat(bayes): build the network from the YAML priors with the pgmpy version shim
 - `8525a57` feat(bayes): discretiser mapping Phase 1 district outputs to node states, with "unknown" handling
 - `139430f` feat(bayes): per-district inference giving posterior over Requirement_class and Gap_class; convert to a point range plus an 80% credible interval
-- `[pending]` feat(bayes): driver attribution: for each district, report which observed or missing nodes move the posterior most
+- `b7f0205` feat(bayes): driver attribution: for each district, report which observed or missing nodes move the posterior most
+- `[pending]` feat(bayes): prior-sensitivity analysis: perturb CPDs (seeded Dirichlet), report how much requirement ranges change; flag prior-dominated districts

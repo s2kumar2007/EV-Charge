@@ -31,23 +31,26 @@ from pgmpy.factors.discrete import TabularCPD
 from pgmpy.inference import VariableElimination
 
 
-def build_bayesian_network(priors_path: Union[str, Path]) -> BayesianNetworkModel:
+def build_bayesian_network(priors_source: Union[str, Path, Dict[str, Any]]) -> BayesianNetworkModel:
     """
-    Build and validate a discrete Bayesian network from a YAML priors specification.
+    Build and validate a discrete Bayesian network from a YAML priors specification or dictionary.
     
     Reads DAG nodes, states, parents, and conditional probability tables, constructs
     TabularCPDs for all nodes, and validates the model structure via check_model().
     """
-    priors_file = Path(priors_path)
-    if not priors_file.exists():
-        raise FileNotFoundError(f"Prior configuration file not found at: {priors_file}")
+    if isinstance(priors_source, dict):
+        cfg = priors_source
+    else:
+        priors_file = Path(priors_source)
+        if not priors_file.exists():
+            raise FileNotFoundError(f"Prior configuration file not found at: {priors_file}")
 
-    with open(priors_file, "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+        with open(priors_file, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
 
     nodes = cfg.get("nodes", {})
     if not nodes:
-        raise ValueError(f"No nodes defined in prior configuration: {priors_file}")
+        raise ValueError("No nodes defined in prior configuration")
 
     # Build directed edges
     edges = [(p, n) for n, n_cfg in nodes.items() for p in n_cfg.get("parents", [])]
@@ -433,3 +436,90 @@ def format_driver_summary(
                 parts.append(f"{name} (impact {shift:.2f})")
 
     return "Driven by " + "; ".join(parts)
+
+
+def perturb_priors_dict(
+    priors_dict: Dict[str, Any],
+    rng: np.random.Generator,
+    concentration: float = 15.0,
+) -> Dict[str, Any]:
+    """
+    Generate a perturbed copy of expert priors using Dirichlet distributions centered on the base CPDs.
+    Preserves exact CPD normalization (each column sums to 1.0).
+    """
+    perturbed = yaml.safe_load(yaml.dump(priors_dict))
+    for _, n_cfg in perturbed.get("nodes", {}).items():
+        cpt = n_cfg.get("cpt")
+        if not n_cfg.get("parents"):
+            alpha = np.maximum(np.array(cpt, dtype=float) * concentration, 0.2)
+            new_p = rng.dirichlet(alpha).tolist()
+            n_cfg["cpt"] = [round(float(x), 4) for x in new_p]
+            s = sum(n_cfg["cpt"])
+            n_cfg["cpt"][-1] = round(n_cfg["cpt"][-1] + (1.0 - s), 4)
+        else:
+            for cond, probs in cpt.items():
+                alpha = np.maximum(np.array(probs, dtype=float) * concentration, 0.2)
+                new_p = rng.dirichlet(alpha).tolist()
+                cpt[cond] = [round(float(x), 4) for x in new_p]
+                s = sum(cpt[cond])
+                cpt[cond][-1] = round(cpt[cond][-1] + (1.0 - s), 4)
+    return perturbed
+
+
+def run_prior_sensitivity(
+    base_model: BayesianNetworkModel,
+    evidence: Dict[str, str],
+    priors_path: Optional[Union[str, Path]] = None,
+    n_perturbations: int = 5,
+    concentration: float = 15.0,
+    seed: int = 2026,
+    shift_threshold: float = 0.25,
+) -> Dict[str, Any]:
+    """
+    Perform Dirichlet prior-sensitivity analysis to test robustness against expert assumptions.
+    
+    If the relative P50 shift exceeds shift_threshold (default 25%), the district is flagged
+    as 'prior_dominated' = True, indicating conclusions are sensitive to assumed priors rather than data.
+    """
+    if priors_path is None:
+        priors_path = Path(__file__).resolve().parents[1] / "config" / "bn_priors.yaml"
+
+    with open(priors_path, "r", encoding="utf-8") as f:
+        base_cfg = yaml.safe_load(f)
+
+    base_res = infer_district_posteriors(base_model, evidence=evidence, target_nodes=["Requirement_class", "Gap_class"])
+    _, base_p50, _ = compute_credible_interval(base_res["Requirement_class"])
+    base_gap = max(base_res["Gap_class"].items(), key=lambda kv: kv[1])[0]
+
+    rng = np.random.default_rng(seed)
+    p50_shifts: List[float] = []
+    gap_flips = 0
+
+    for _ in range(n_perturbations):
+        pert_cfg = perturb_priors_dict(base_cfg, rng=rng, concentration=concentration)
+        try:
+            pert_model = build_bayesian_network(pert_cfg)
+            pert_res = infer_district_posteriors(pert_model, evidence=evidence, target_nodes=["Requirement_class", "Gap_class"])
+            _, pert_p50, _ = compute_credible_interval(pert_res["Requirement_class"])
+            pert_gap = max(pert_res["Gap_class"].items(), key=lambda kv: kv[1])[0]
+
+            denom = max(float(base_p50), 10.0)
+            rel_shift = abs(pert_p50 - base_p50) / denom
+            p50_shifts.append(rel_shift)
+            if pert_gap != base_gap:
+                gap_flips += 1
+        except Exception:
+            continue
+
+    mean_p50_shift = float(np.mean(p50_shifts)) if p50_shifts else 0.0
+    gap_flip_rate = float(gap_flips / n_perturbations) if n_perturbations > 0 else 0.0
+    prior_dominated = bool(mean_p50_shift > shift_threshold)
+
+    return {
+        "base_p50": base_p50,
+        "mean_p50_shift": round(mean_p50_shift, 4),
+        "p50_shift_ratio": round(mean_p50_shift, 4),
+        "gap_flip_rate": round(gap_flip_rate, 4),
+        "prior_dominated": prior_dominated,
+    }
+

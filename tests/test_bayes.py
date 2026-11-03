@@ -266,4 +266,24 @@ def test_attribute_top_drivers():
     assert any("EV_growth" in name for name in missing_driver_names)
 
 
+def test_prior_sensitivity_dirichlet():
+    """Verify Dirichlet prior perturbation evaluates whether a district is prior-dominated."""
+    from bayes_layer import build_bayesian_network, run_prior_sensitivity
+
+    model = build_bayesian_network(PRIORS_FILE)
+    evidence = {
+        "Urbanisation": "high",
+        "EV_growth": "high",
+        "Traffic_exposure": "high",
+        "OSM_completeness": "good",
+        "Grid_headroom": "unknown",
+    }
+    sens = run_prior_sensitivity(model, evidence, priors_path=PRIORS_FILE, n_perturbations=5, seed=2026)
+    assert "p50_shift_ratio" in sens
+    assert "prior_dominated" in sens
+    assert isinstance(sens["prior_dominated"], bool)
+    assert 0.0 <= sens["gap_flip_rate"] <= 1.0
+
+
+
 
