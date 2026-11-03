@@ -358,6 +358,78 @@ def attribute_top_drivers(
     model: BayesianNetworkModel,
     evidence: Dict[str, str],
     target_node: str = "Requirement_class",
+    top_k: int = 3,
 ) -> List[Tuple[str, float]]:
-    """Attribute which observed or missing evidence nodes most significantly shift the posterior."""
-    raise NotImplementedError("Implementation pending in feat(bayes)")
+    """
+    Attribute which observed or missing evidence nodes most significantly shift the target posterior.
+    
+    Method:
+      1. Baseline posterior P0 under current evidence.
+      2. For each observed node k in evidence:
+         Calculate Total Variation Distance (TVD) when k is omitted (leave-one-out impact):
+         TVD(P0, P_{-k}) = 0.5 * sum_s |P0(s) - P_{-k}(s)|.
+      3. For candidate unobserved nodes (e.g. EV_growth when absent):
+         Calculate maximum counterfactual shift across possible states:
+         max_{s} TVD(P0, P_{+k=s}).
+         Labeled as 'missing_{k}' to flag key drivers of uncertainty.
+      4. Return ranked list of (node_identifier, shift_magnitude).
+    """
+    base_res = infer_district_posteriors(model, evidence=evidence, target_nodes=[target_node])
+    p0 = base_res[target_node]
+
+    impacts: List[Tuple[str, float]] = []
+
+    # 1. Leave-one-out impact for observed nodes
+    for k in list(evidence.keys()):
+        if evidence[k] is None:
+            continue
+        e_reduced = {i: v for i, v in evidence.items() if i != k}
+        reduced_res = infer_district_posteriors(model, evidence=e_reduced, target_nodes=[target_node])
+        p_reduced = reduced_res[target_node]
+        shift = 0.5 * sum(abs(p0[s] - p_reduced.get(s, 0.0)) for s in p0)
+        impacts.append((k, round(float(shift), 4)))
+
+    # 2. Counterfactual impact for unobserved nodes
+    candidate_unobserved = ["EV_growth", "Urbanisation", "Traffic_exposure", "OSM_completeness"]
+    for u in candidate_unobserved:
+        if u not in evidence or evidence[u] is None:
+            cpd = model.get_cpds(u)
+            if cpd is None:
+                continue
+            max_shift = 0.0
+            for state in cpd.state_names[u]:
+                e_plus = dict(evidence)
+                e_plus[u] = state
+                plus_res = infer_district_posteriors(model, evidence=e_plus, target_nodes=[target_node])
+                p_plus = plus_res[target_node]
+                shift = 0.5 * sum(abs(p0[s] - p_plus.get(s, 0.0)) for s in p0)
+                if shift > max_shift:
+                    max_shift = shift
+            if max_shift > 0.04:
+                impacts.append((f"missing_{u}", round(float(max_shift), 4)))
+
+    impacts.sort(key=lambda x: x[1], reverse=True)
+    return impacts[:top_k]
+
+
+def format_driver_summary(
+    drivers: List[Tuple[str, float]],
+    evidence: Optional[Dict[str, str]] = None,
+) -> str:
+    """Format top drivers into a human-readable explanation string for outputs and UI."""
+    if not drivers:
+        return "Baseline prior distribution (no significant evidence shifts)"
+
+    parts: List[str] = []
+    for name, shift in drivers:
+        if name.startswith("missing_"):
+            node = name.replace("missing_", "")
+            parts.append(f"missing {node} (uncertainty +{shift:.2f})")
+        else:
+            state = evidence.get(name) if evidence else ""
+            if state:
+                parts.append(f"{name}={state} (impact {shift:.2f})")
+            else:
+                parts.append(f"{name} (impact {shift:.2f})")
+
+    return "Driven by " + "; ".join(parts)

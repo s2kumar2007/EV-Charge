@@ -233,3 +233,37 @@ def test_infer_district_full():
     assert res["p10"] <= res["p50"] <= res["p90"]
 
 
+def test_attribute_top_drivers():
+    """Verify driver attribution identifies observed evidence and missing data impacts."""
+    from bayes_layer import build_bayesian_network, attribute_top_drivers
+
+    model = build_bayesian_network(PRIORS_FILE)
+
+    # 1. Fully observed high-demand district
+    evidence = {
+        "Urbanisation": "high",
+        "EV_growth": "high",
+        "Traffic_exposure": "high",
+        "OSM_completeness": "good",
+        "Grid_headroom": "unknown",
+    }
+    drivers = attribute_top_drivers(model, evidence, target_node="Requirement_class")
+    assert len(drivers) >= 2
+    # Top driver should have positive shift score
+    driver_names = [d[0] for d in drivers]
+    assert "EV_growth" in driver_names or "Urbanisation" in driver_names
+    assert drivers[0][1] >= drivers[1][1]
+
+    # 2. District with missing EV_growth
+    missing_evidence = {
+        "Urbanisation": "low",
+        "Traffic_exposure": "low",
+        "OSM_completeness": "fair",
+    }
+    missing_drivers = attribute_top_drivers(model, missing_evidence, target_node="Requirement_class")
+    # Missing EV_growth should be captured as an uncertainty driver
+    missing_driver_names = [d[0] for d in missing_drivers]
+    assert any("EV_growth" in name for name in missing_driver_names)
+
+
+
