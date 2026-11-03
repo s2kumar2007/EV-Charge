@@ -66,4 +66,5 @@
 **Baseline**: 146 passed on main, tag `m6-finale` verified.
 
 ### Phase 2 Progress Log
-- `[pending]` chore(phase2): create branch, verify main is green and m6-finale exists, log baseline in PROGRESS.md
+- `c9782a7` chore(phase2): create branch, verify main is green and m6-finale exists, log baseline in PROGRESS.md
+- `[pending]` docs(bayes): docs/bayes_design.md: nodes, edges, why each edge exists, how bins are derived from Phase 1 outputs, what is assumption vs data
