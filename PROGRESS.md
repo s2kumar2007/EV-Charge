@@ -68,4 +68,5 @@
 ### Phase 2 Progress Log
 - `c9782a7` chore(phase2): create branch, verify main is green and m6-finale exists, log baseline in PROGRESS.md
 - `69c432c` docs(bayes): specify Bayesian network design and provenance in docs/bayes_design.md
-- `[pending]` data(bayes): config/bn_priors.yaml with every prior/CPD parameter, rationale, source-or-"analyst judgement"; validation that rows sum to 1
+- `2b88ef8` data(bayes): config/bn_priors.yaml with expert parameters and validation
+- `[pending]` test(bayes): failing tests: CPDs valid, model check passes, evidence changes posterior in the expected direction, missing evidence widens the posterior
