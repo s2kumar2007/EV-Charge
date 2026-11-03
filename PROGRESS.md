@@ -58,3 +58,12 @@
   - `m4-optimiser` (MILP MCLP + FRLM Candidate Siting)
   - `m5-dashboard` (FastAPI Service & Interactive Leaflet Dashboard)
   - `m6-finale` / `v0.2-finale-ready` (Validation, Spot Checks, and Jury Readiness)
+
+
+## Phase 2: Bayesian Uncertainty & Planner Assistant
+**Date**: 3 November 2026  
+**Branch**: `feat/phase2`  
+**Baseline**: 146 passed on main, tag `m6-finale` verified.
+
+### Phase 2 Progress Log
+- `[pending]` chore(phase2): create branch, verify main is green and m6-finale exists, log baseline in PROGRESS.md
