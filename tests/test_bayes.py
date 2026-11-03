@@ -186,3 +186,50 @@ def test_discretise_district_row_missing_and_synthetic():
     assert "EV_growth" not in ev_synth or ev_synth["EV_growth"] is None
     assert ev_synth["OSM_completeness"] == "fair"
 
+
+def test_compute_credible_interval():
+    """Verify conversion of requirement class probabilities to P10, P50, P90 port counts."""
+    from bayes_layer import compute_credible_interval
+
+    # Low requirement case
+    dist_low = {"tier_1_low": 1.0, "tier_2_med": 0.0, "tier_3_high": 0.0, "tier_4_severe": 0.0}
+    p10, p50, p90 = compute_credible_interval(dist_low, credibility=0.80)
+    assert 0 <= p10 <= p50 <= p90 <= 50
+    assert p50 == 25
+
+    # Severe requirement case
+    dist_severe = {"tier_1_low": 0.0, "tier_2_med": 0.0, "tier_3_high": 0.0, "tier_4_severe": 1.0}
+    p10_s, p50_s, p90_s = compute_credible_interval(dist_severe, credibility=0.80)
+    assert 500 <= p10_s <= p50_s <= p90_s <= 1200
+
+    # Diffuse / uncertain distribution has wider interval than sharp distribution
+    dist_diffuse = {"tier_1_low": 0.25, "tier_2_med": 0.25, "tier_3_high": 0.25, "tier_4_severe": 0.25}
+    p10_d, p50_d, p90_d = compute_credible_interval(dist_diffuse, credibility=0.80)
+    ci_diffuse = p90_d - p10_d
+    ci_low = p90 - p10
+    assert ci_diffuse > ci_low
+
+
+def test_infer_district_full():
+    """Verify end-to-end per-district inference produces requirement ranges and gap posterior."""
+    import pandas as pd
+    from bayes_layer import build_bayesian_network, infer_district_full
+
+    model = build_bayesian_network(PRIORS_FILE)
+    row = pd.Series({
+        "district_key": "chennai",
+        "commercial_per_km2": 15.0,
+        "road_km_per_km2": 3.0,
+        "ev_total": 8000,
+        "confidence": 0.85,
+        "status": "ok",
+        "data_flag": "real",
+    })
+    res = infer_district_full(model, row)
+    assert "p10" in res and "p50" in res and "p90" in res
+    assert "ci_width" in res
+    assert "gap_posterior" in res
+    assert "Requirement_class" in res["posteriors"]
+    assert res["p10"] <= res["p50"] <= res["p90"]
+
+

@@ -261,8 +261,97 @@ def compute_credible_interval(
     requirement_posterior: Dict[str, float],
     credibility: float = 0.80,
 ) -> Tuple[int, int, int]:
-    """Convert discrete requirement class posterior to P10, P50, and P90 port range."""
-    raise NotImplementedError("Implementation pending in feat(bayes)")
+    """
+    Convert discrete requirement class posterior to P10, P50, and P90 port counts
+    using piecewise-linear CDF interpolation over physical requirement tiers.
+    
+    Tiers (ports):
+      - tier_1_low: [0, 50)
+      - tier_2_med: [50, 200)
+      - tier_3_high: [200, 500)
+      - tier_4_severe: [500, 1200]
+    """
+    bounds = [0.0, 50.0, 200.0, 500.0, 1200.0]
+    ordered_states = ["tier_1_low", "tier_2_med", "tier_3_high", "tier_4_severe"]
+
+    raw_probs = [float(requirement_posterior.get(s, 0.0)) for s in ordered_states]
+    total_p = sum(raw_probs)
+    if total_p <= 0:
+        probs = [0.25, 0.25, 0.25, 0.25]
+    else:
+        probs = [p / total_p for p in raw_probs]
+
+    # Construct cumulative distribution function
+    cdf = [0.0]
+    for p in probs:
+        cdf.append(cdf[-1] + p)
+    cdf[-1] = 1.0  # Numerical safeguard
+
+    alpha = (1.0 - credibility) / 2.0
+    quantiles = [alpha, 0.50, 1.0 - alpha]
+    results: List[int] = []
+
+    for q in quantiles:
+        val = bounds[0]
+        for i in range(len(probs)):
+            if q <= cdf[i + 1] or i == len(probs) - 1:
+                span = cdf[i + 1] - cdf[i]
+                if span > 1e-12:
+                    frac = (q - cdf[i]) / span
+                    val = bounds[i] + frac * (bounds[i + 1] - bounds[i])
+                else:
+                    val = bounds[i]
+                break
+        results.append(int(round(val)))
+
+    p10, p50, p90 = results[0], results[1], results[2]
+    # Enforce strict monotonicity
+    p10 = max(0, p10)
+    p50 = max(p10, p50)
+    p90 = max(p50, p90)
+
+    return p10, p50, p90
+
+
+def infer_district_full(
+    model: BayesianNetworkModel,
+    district_row: Union[pd.Series, Dict[str, Any]],
+    quantiles_cache: Optional[Dict[str, Any]] = None,
+    credibility: float = 0.80,
+) -> Dict[str, Any]:
+    """
+    Run complete Bayesian inference for a single district.
+    
+    Returns:
+      - evidence: Discretised evidence dict
+      - posteriors: Full posterior distributions for Requirement_class and Gap_class
+      - requirement_posterior: Posterior dict for Requirement_class
+      - gap_posterior: Posterior dict for Gap_class
+      - p10, p50, p90: Credible interval bounds for required ports
+      - ci_width: Absolute 80% credible interval width (p90 - p10)
+      - most_likely_gap: State with highest probability in Gap_class
+    """
+    evidence = discretise_district_row(district_row, quantiles_cache=quantiles_cache)
+    posteriors = infer_district_posteriors(
+        model, evidence=evidence, target_nodes=["Requirement_class", "Gap_class"]
+    )
+    req_post = posteriors["Requirement_class"]
+    gap_post = posteriors["Gap_class"]
+
+    p10, p50, p90 = compute_credible_interval(req_post, credibility=credibility)
+    most_likely_gap = max(gap_post.items(), key=lambda kv: kv[1])[0]
+
+    return {
+        "evidence": evidence,
+        "posteriors": posteriors,
+        "requirement_posterior": req_post,
+        "gap_posterior": gap_post,
+        "p10": p10,
+        "p50": p50,
+        "p90": p90,
+        "ci_width": p90 - p10,
+        "most_likely_gap": most_likely_gap,
+    }
 
 
 def attribute_top_drivers(
