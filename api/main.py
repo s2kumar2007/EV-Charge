@@ -1,3 +1,4 @@
+from assistant.llm_backend import PlannerAssistant
 """
 FastAPI application for ChargeGap India interactive API and dashboard.
 """
@@ -274,3 +275,16 @@ def calculate_whatif(req: WhatIfRequest) -> Dict[str, Any]:
         "districts": results,
         "drivers": f"What-if simulation: {req.adoption_growth_pct:+g}% EV growth, {req.target_ratio:g} EVs/port, {req.undercount_factor:g}x charger undercount",
     }
+
+
+class AssistantRequest(BaseModel):
+    question: str
+    district_context: Optional[str] = None
+
+
+@app.post("/api/assistant")
+@app.post("/assistant")
+def chat_assistant(req: AssistantRequest) -> Dict[str, Any]:
+    """Planner Assistant endpoint answering questions with verified evidence and warnings."""
+    assistant = PlannerAssistant()
+    return assistant.answer(req.question, district_context=req.district_context)

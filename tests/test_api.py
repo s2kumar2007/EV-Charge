@@ -143,3 +143,22 @@ def test_dashboard_has_uncertainty_panel(client):
     assert "Bayesian Uncertainty" in html
     assert "Credible Interval" in html
     assert "Deficit Severity" in html
+
+
+def test_post_assistant_endpoints(client):
+    """Verify POST /api/assistant and POST /assistant answer questions with evidence and warnings."""
+    payload = {"question": "Why is Krishnagiri ranked 3rd?"}
+    for path in ["/api/assistant", "/assistant"]:
+        resp = client.post(path, json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert "Krishnagiri" in data["answer"]
+        assert "evidence" in data
+        assert "warnings" in data
+        assert data["backend"] in ("offline", "llm")
+
+    # Out of scope refusal test
+    resp_refused = client.post("/api/assistant", json={"question": "What is the capital of Germany?"})
+    assert resp_refused.status_code == 200
+    assert resp_refused.json()["status"] == "refused"

@@ -87,4 +87,5 @@
 - `c643de9` test(assistant): golden Q&A tests for the offline back end (17 golden questions)
 - `9321acc` feat(assistant): offline intent router and answer templates, including the "I can't tell you X because Y is missing" path
 - `8de34e4` feat(assistant): LLM back end with tool use, optional dependency, graceful fallback to offline on missing key, timeout or error
-- `[pending]` test(assistant): guardrail tests (out-of-scope, injection, synthetic isolation)
+- `c612706` test(assistant): guardrail tests (out-of-scope, injection, synthetic isolation)
+- `[pending]` feat(api): POST /assistant endpoint returning answer, evidence list, warnings and backend tag
