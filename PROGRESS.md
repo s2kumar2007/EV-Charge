@@ -97,3 +97,8 @@
 - `e3380bf` docs(disclosures): record AI assistance and planner assistant tool use
 - `6eea5e6` docs(demo): extend DEMO_SCRIPT.md with 2-minute Phase 2 jury segment
 - `complete` chore: merge feat/phase2 to main and tag v0.3-phase2
+- `e67e181` fix(api): remove duplicate module docstring in main.py
+- `96cde82` fix(corridors): ensure uniform LineString geometry for zero-length gaps
+- `dc88e59` feat(api): expose geojson endpoints and render corridors/districts in UI
+- `153a762` fix(optimiser): align pipeline schema, interpolate coords, and allocate urban sites
+- `6188c67` chore: merge fix/audit-fixes to main (v0.3.1)

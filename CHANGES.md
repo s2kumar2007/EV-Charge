@@ -1,5 +1,25 @@
 # Changes in this version
 
+## 2026-11-04 - Codebase Audit & Defect Remediation (v0.3.1)
+
+- Siting Optimiser (`src/site_optimiser.py`):
+  - Fixed column schema mapping to read real pipeline columns (`gap_km`, `start_km`, `end_km`, `flag_regular_gap`) alongside legacy names.
+  - Interpolated coordinates along `corridor_gaps.geojson` LineString geometry, eliminating degenerate (13.0, 80.0) fallback points.
+  - Resolved district centroids from `districts_scored.geojson` for urban candidate siting and demand point weighting.
+  - Fixed input path to load `district_hotspots.csv` (using `class` column), allocating 8 urban charging hubs via MCLP MILP alongside 7 corridor waypoints.
+  - Explicitly assigned `"site_type": "highway_corridor"` and `"urban_hotspot"` across recommended outputs.
+- Corridor Geometry Uniformity (`src/corridors.py`):
+  - Ensured uniform `LineString` geometry across all features in `outputs/corridor_gaps.geojson` by emitting degenerate `LineString([pt, pt])` when `gap_m <= 0`.
+- Dashboard & API Geospatial Overlays (`api/main.py`, `api/static/index.html`):
+  - Added `@app.get("/api/corridors/geojson")` and `@app.get("/api/districts/geojson")` endpoints with correct declaration ordering before parameterized routes.
+  - Rendered colored highway corridor gaps (heavy, regular, compliant) and district polygons on the Leaflet map.
+  - Wired up change event listeners for `#toggle-districts` and `#toggle-corridors` layer checkboxes.
+- Code Polish (`api/main.py`):
+  - Removed duplicate module docstring at top of file.
+- Verification & Test Suite:
+  - 207 tests passing across unit, integration, and E2E suites (5 new tests covering schema alignment, geometry uniformity, and GeoJSON endpoints).
+  - Main pipeline (`run_all.py --offline`) verified end-to-end with 15 valid recommended sites and identical Slice 0/1 rankings.
+
 ## 2026-11-04 - Phase 2 (Bayesian Uncertainty Layer & Grounded Planner Assistant)
 
 - Phase 2 additions:
