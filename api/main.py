@@ -1,9 +1,7 @@
 """
 FastAPI application for ChargeGap India interactive API and dashboard.
 """
-"""
-FastAPI application for ChargeGap India interactive API and dashboard.
-"""
+import json
 import math
 import sys
 from pathlib import Path
@@ -18,7 +16,7 @@ from pydantic import BaseModel
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from utils import OUTPUTS, SAMPLES, norm_key
+from utils import OUTPUTS, PROCESSED, SAMPLES, norm_key
 from assistant.llm_backend import PlannerAssistant
 
 app = FastAPI(title="ChargeGap India API", version="0.2.0")
@@ -116,6 +114,21 @@ def get_districts() -> List[Dict[str, Any]]:
     return []
 
 
+@app.get("/api/districts/geojson")
+def get_districts_geojson() -> Dict[str, Any]:
+    """Retrieve district boundary geometries and gap scores as GeoJSON for Leaflet overlay."""
+    candidates = [
+        PROCESSED / "districts_scored_deduplicated.geojson",
+        PROCESSED / "districts_scored.geojson",
+        PROCESSED / "districts_tamil-nadu.geojson",
+    ]
+    for cand in candidates:
+        if cand.exists():
+            with open(cand, "r", encoding="utf-8") as f:
+                return json.load(f)
+    raise HTTPException(status_code=404, detail="Districts GeoJSON not found.")
+
+
 @app.get("/api/districts/{district_key}")
 def get_district(district_key: str) -> Dict[str, Any]:
     """Retrieve single district details by normalized district key."""
@@ -172,6 +185,20 @@ def get_corridors() -> List[Dict[str, Any]]:
     return []
 
 
+@app.get("/api/corridors/geojson")
+def get_corridors_geojson() -> Dict[str, Any]:
+    """Retrieve highway corridor gap geometries as GeoJSON for Leaflet overlay."""
+    geojson_file = OUTPUTS / "corridor_gaps.geojson"
+    if geojson_file.exists():
+        with open(geojson_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    sample_geojson = SAMPLES / "corridors_tamil_nadu.geojson"
+    if sample_geojson.exists():
+        with open(sample_geojson, "r", encoding="utf-8") as f:
+            return json.load(f)
+    raise HTTPException(status_code=404, detail="Corridor gaps GeoJSON not found.")
+
+
 @app.get("/api/sites")
 def get_sites() -> List[Dict[str, Any]]:
     """Retrieve recommended priority charging sites."""
@@ -180,6 +207,10 @@ def get_sites() -> List[Dict[str, Any]]:
         df = pd.read_csv(sites_file)
         return _clean_records(df)
     return []
+
+
+
+
 
 
 class WhatIfRequest(BaseModel):

@@ -174,3 +174,21 @@ def test_dashboard_has_assistant_chat_panel(client):
     assert "chat-input" in html
     assert "Offline Mode" in html
     assert "Explain This Ranking" in html
+
+
+def test_get_corridors_geojson_endpoint(client):
+    """Verify GET /api/corridors/geojson returns FeatureCollection for Leaflet map."""
+    resp = client.get("/api/corridors/geojson")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data.get("type") == "FeatureCollection"
+    assert "features" in data
+
+
+def test_get_districts_geojson_endpoint(client):
+    """Verify GET /api/districts/geojson returns FeatureCollection for Leaflet map."""
+    resp = client.get("/api/districts/geojson")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data.get("type") == "FeatureCollection"
+    assert "features" in data

@@ -143,3 +143,41 @@ def test_rank_and_export_sites():
     assert str(df["rank"].dtype).startswith("int")
     assert len(gdf) == 2
     assert gdf.crs == "EPSG:4326"
+
+
+def test_solve_corridor_frlm_handles_pipeline_schema():
+    """Verify corridor FRLM handles real pipeline columns (gap_km, flag_regular_gap) and sets site_type."""
+    pipeline_gaps = pd.DataFrame([
+        {
+            "corridor_id": "NH-48",
+            "corridor_name": "Chennai-Bengaluru",
+            "gap_km": 60.0,
+            "start_km": 0.0,
+            "end_km": 60.0,
+            "flag_regular_gap": True,
+            "start_lon": 80.0,
+            "start_lat": 13.0,
+            "end_lon": 79.5,
+            "end_lat": 12.9,
+        }
+    ])
+    rec = solve_corridor_frlm(pipeline_gaps, site_budget=2)
+    assert len(rec) == 2
+    # site_type must be set to 'highway_corridor'
+    assert (rec["site_type"] == "highway_corridor").all()
+    assert (rec["priority_score"] > 0).all()
+    assert rec["distance_along_km"].iloc[0] > 0
+
+
+def test_site_optimiser_allocates_both_corridors_and_urban_hotspots():
+    """Verify that running site_optimiser main() produces both highway corridor and urban hotspot sites with distinct coordinates."""
+    import site_optimiser
+    df = site_optimiser.main()
+    assert not df.empty
+    types = set(df["site_type"])
+    assert "highway_corridor" in types
+    assert "urban_hotspot" in types
+    # Coordinates must not all collapse to degenerate (13.0, 80.0)
+    unique_coords = set(zip(df["latitude"], df["longitude"]))
+    assert len(unique_coords) == len(df), f"Found duplicate coordinates: {len(unique_coords)} unique vs {len(df)} total"
+    assert (df["priority_score"] > 0).all()
