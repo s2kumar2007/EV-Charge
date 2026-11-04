@@ -81,4 +81,5 @@
 - `6f0b426` feat(api): GET /districts/{id}/uncertainty and extend /api/whatif
 - `736a18b` feat(dashboard): uncertainty panel in drill-down: probability bars, credible interval, drivers, prior-dominated warning
 - `3265fc9` docs(bayes): README section and update validation_report.md with prior-sensitivity results
-- `[pending]` test(assistant): tests for the tool layer using fictional outputs
+- `b493276` test(assistant): tests for the tool layer using fictional outputs
+- `[pending]` feat(assistant): tool layer (read-only) over outputs/*.csv|geojson with data_flag and UNVERIFIED propagation
