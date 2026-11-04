@@ -89,4 +89,5 @@
 - `8de34e4` feat(assistant): LLM back end with tool use, optional dependency, graceful fallback to offline on missing key, timeout or error
 - `c612706` test(assistant): guardrail tests (out-of-scope, injection, synthetic isolation)
 - `fa1650b` feat(api): POST /assistant endpoint returning answer, evidence list, warnings and backend tag
-- `[pending]` feat(dashboard): chat panel docked to the drill-down: suggested questions, evidence expandable, badge, warnings
+- `d80220c` feat(dashboard): chat panel docked to the drill-down: suggested questions, evidence expandable, badge, warnings
+- `[pending]` feat(assistant): "explain this ranking" button on each district for live demo

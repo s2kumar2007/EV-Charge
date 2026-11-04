@@ -111,6 +111,7 @@
                 <th>Ports</th>
                 <th>Gap Score</th>
                 <th>Deficit</th>
+                <th style="text-align:right;">Action</th>
               </tr>
             </thead>
             <tbody id="rankings-body">
@@ -283,6 +284,7 @@
           <td>${d.port_count !== null && d.port_count !== undefined ? d.port_count : (d.charger_count || 0)}</td>
           <td>${d.gap_score !== null && d.gap_score !== undefined ? Number(d.gap_score).toFixed(1) : '-'}</td>
           <td>${d.ports_deficit !== null && d.ports_deficit !== undefined ? d.ports_deficit : '-'}</td>
+          <td style="text-align:right;"><button class="chip-btn" style="background:#e0e7ff; color:#4338ca; border-color:#818cf8;" onclick="event.stopPropagation(); selectDistrict('${d.district_key || ''}'); explainCurrentDistrict('${d.district_key || d.district}');">⚡ Explain</button></td>
         </tr>
       `).join('');
     }
