@@ -75,4 +75,5 @@
 - `139430f` feat(bayes): per-district inference giving posterior over Requirement_class and Gap_class; convert to a point range plus an 80% credible interval
 - `b7f0205` feat(bayes): driver attribution: for each district, report which observed or missing nodes move the posterior most
 - `bb8529a` feat(bayes): prior-sensitivity analysis: perturb CPDs (seeded Dirichlet), report how much requirement ranges change; flag prior-dominated districts
-- `[pending]` feat(bayes): reconcile with the Phase 1 Monte Carlo: output both ranges side by side with an agreement flag
+- `39d246f` feat(bayes): reconcile with the Phase 1 Monte Carlo: output both ranges side by side with an agreement flag
+- `[pending]` feat(bayes): write outputs/bayes_district_posteriors.csv and wire pipeline step 12e
