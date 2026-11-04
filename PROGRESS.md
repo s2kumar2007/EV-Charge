@@ -79,4 +79,5 @@
 - `f16f177` feat(bayes): write outputs/bayes_district_posteriors.csv and wire pipeline step 12e
 - `a2346bc` feat(map): "Bayesian uncertainty" map layer and legend noting expert assumptions
 - `6f0b426` feat(api): GET /districts/{id}/uncertainty and extend /api/whatif
-- `[pending]` feat(dashboard): uncertainty panel in drill-down: probability bars, credible interval, drivers, prior-dominated warning
+- `736a18b` feat(dashboard): uncertainty panel in drill-down: probability bars, credible interval, drivers, prior-dominated warning
+- `[pending]` docs(bayes): README section and update validation_report.md with prior-sensitivity results

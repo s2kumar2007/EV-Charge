@@ -382,6 +382,29 @@ See `outputs/feasibility.md` for the actual test results and live-fetch limits
 of this development environment. A generated all-missing map proves the
 pipeline handles missing inputs; it does not demonstrate EV demand rankings.
 
+## Bayesian Uncertainty Layer & Expert Priors
+
+### What It Does
+Phase 1 sized port deficits using ratio benchmarks and Monte Carlo undercount simulations. The **Phase 2 Bayesian Uncertainty Layer** (`src/bayes_layer.py`) handles missing or noisy telemetry with exact probabilistic inference:
+1. **Marginalization over Missing Evidence**: When a district lacks official VAHAN counts or grid feeder logs, the inference engine marginalizes over unobserved nodes rather than imputing fabricated values. The 80% credible interval ($[P_{10}, P_{90}]$) automatically widens to reflect institutional uncertainty.
+2. **Explicit Expert Prior Provenance**: All Conditional Probability Distributions (CPDs) are cataloged in `config/bn_priors.yaml` with regulatory citations (CEA National Electricity Plan, NITI Aayog Handbook 2021, MoP 2024 Guidelines, BEE) or tagged as `"analyst judgement"`.
+3. **Driver Attribution**: For every district, leave-one-out TVD shifts identify whether demand is driven by EV growth, urbanization, transit exposure, or if uncertainty is driven by unobserved EV registrations.
+4. **Dirichlet Prior Sensitivity**: Perturbs CPD columns with Dirichlet sampling ($lpha=15, N=5$ trials) to verify whether conclusions are data-dominated or prior-dominated.
+
+### How to Edit Priors (`config/bn_priors.yaml`)
+To customize prior beliefs or incorporate new empirical survey data:
+1. Open `config/bn_priors.yaml`.
+2. Locate the node under `nodes: <NodeName>:`.
+3. Update the conditional probability table (`cpt`). **Rule**: Every discrete probability vector or column MUST sum to 1.0 $\pm 10^{-4}$.
+4. Update the mandatory `rationale` and `source` metadata fields.
+5. Re-run `python src/bayes_layer.py` or `python run_all.py` to regenerate `outputs/bayes_district_posteriors.csv`.
+
+### Limitations
+- Discretization uses 3–4 discrete bins per node; continuous variation within bins is approximated via piecewise-linear CDF interpolation.
+- Grid headroom is currently observed as `'unknown'` state across all districts until discom SCADA/feeder telemetry is integrated.
+
+---
+
 ## Limitations before a jury or publication
 
 - OSM coverage is incomplete and does not guarantee public access, working
