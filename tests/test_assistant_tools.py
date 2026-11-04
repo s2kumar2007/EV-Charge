@@ -255,3 +255,48 @@ def test_list_limitations(fictional_outputs):
     assert len(lims["limitations"]) >= 3
     assert any("unranked" in lim.lower() for lim in lims["limitations"])
     assert any("unverified" in lim.lower() for lim in lims["limitations"])
+
+
+def test_resolver_aliases_and_typos():
+    """Verify DistrictResolver maps common regional aliases and typos to canonical keys."""
+    from assistant.resolver import DistrictResolver
+    resolver = DistrictResolver({
+        "tiruchirappalli": "Tiruchirappalli",
+        "coimbatore": "Coimbatore",
+        "the_nilgiris": "The Nilgiris",
+        "thanjavur": "Thanjavur",
+        "madurai": "Madurai",
+        "dharmapuri": "Dharmapuri",
+    })
+
+    # Common spoken aliases
+    assert resolver.resolve("trichy")["district_key"] == "tiruchirappalli"
+    assert resolver.resolve("ooty")["district_key"] == "the_nilgiris"
+    assert resolver.resolve("covai")["district_key"] == "coimbatore"
+    assert resolver.resolve("tanjore")["district_key"] == "thanjavur"
+
+    # Typos
+    assert resolver.resolve("madura")["district_key"] == "madurai"
+    assert resolver.resolve("dharmapuree")["district_key"] == "dharmapuri"
+
+
+def test_resolver_ambiguity_and_not_found():
+    """Verify DistrictResolver detects ambiguous queries and empty/invalid strings."""
+    from assistant.resolver import DistrictResolver
+    resolver = DistrictResolver({
+        "tiruvallur": "Tiruvallur",
+        "tiruvarur": "Tiruvarur",
+        "tiruvannamalai": "Tiruvannamalai",
+    })
+
+    # Prefix 'tiru' matches multiple districts with similar score
+    res = resolver.resolve("tiru")
+    assert res["status"] in ("ambiguous", "resolved")
+    if res["status"] == "ambiguous":
+        assert len(res["candidates"]) >= 2
+        assert "Did you mean" in res["message"]
+
+    # Empty query
+    assert resolver.resolve("")["status"] == "not_found"
+    # Unknown string
+    assert resolver.resolve("random_nonexistent_xyz")["status"] == "not_found"
