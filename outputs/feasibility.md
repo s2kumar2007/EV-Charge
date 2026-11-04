@@ -1,6 +1,6 @@
-# Latest Verification — 2 November 2026 (Roadmap Milestones 1 to 6 Complete)
+# Latest Verification — 4 November 2026 (Roadmap Milestones 1 to 6 & Phase 2 Complete)
 
-This update certifies completion of all 6 milestones on the engineering roadmap for Techfest 2026–27 (Challenge 1: EV Infra Map India). All modules run completely offline, with 145 unit and integration tests passing.
+This update certifies completion of Phase 2 (Bayesian Uncertainty Layer & Grounded Planner Assistant) alongside all 6 Phase 1 milestones on the engineering roadmap for Techfest 2026–27 (Challenge 1: EV Infra Map India). All modules run completely offline, with 202 unit, integration, and end-to-end tests passing.
 
 ## Implementation Status Table
 
@@ -14,6 +14,8 @@ This update certifies completion of all 6 milestones on the engineering roadmap 
 | **Milestone 4: Siting Optimizer** | **IMPLEMENTED** | `src/site_optimiser.py` | `tests/test_optimiser.py` (MCLP/FRLM MILP PuLP/CBC) |
 | **Milestone 5: API & Dashboard** | **IMPLEMENTED** | `api/main.py`, `run_dashboard.py` | `tests/test_api.py` (TestClient endpoints, Leaflet UI) |
 | **Milestone 6: Validation & Audit** | **IMPLEMENTED** | `outputs/validation_report.md` | `tests/test_validation.py`, `DEMO_SCRIPT.md` |
+| **Phase 2: Bayesian Uncertainty Layer** | **IMPLEMENTED** | `src/bayes_layer.py`, `config/bn_priors.yaml` | `tests/test_bayes.py` (exact Variable Elimination, Dirichlet sensitivity, 80% CI) |
+| **Phase 2: Grounded Planner Assistant** | **IMPLEMENTED** | `src/assistant/`, `api/main.py` | `tests/test_assistant_*.py`, `tests/test_phase2_e2e.py` (offline router, tool calling, guardrails, 1-click explain) |
 | **National Multi-State Rollout** | **PARTIAL** | `run_india.py` | Logged in `TODO_MANUAL.md` (needs national VAHAN CSVs) |
 
 ---
@@ -25,15 +27,12 @@ This update certifies completion of all 6 milestones on the engineering roadmap 
 platform win32 -- Python 3.11.9, pytest-8.3.3, pluggy-1.5.0
 rootdir: C:\Users\K\OneDrive\Documents\chargegap\chargegap
 configfile: pytest.ini
-collected 145 items
+collected 202 items
 
-........................................................................ [ 49%]
-........................................................................ [ 99%]
-.                                                                        [100%]
-============================== warnings summary ===============================
-.venv\Lib\site-packages\fastapi\testclient.py:1
-  StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
-145 passed, 1 warning in 6.48s
+........................................................................ [ 35%]
+........................................................................ [ 71%]
+..........................................................               [100%]
+202 passed in 47.63s
 [GATE] Running Pytest suite: .venv\Scripts\python.exe -m pytest -q
 [GATE] Running Bytecode compilation: .venv\Scripts\python.exe -m compileall -q src api
 [GATE PASS] Commit gate verification succeeded.

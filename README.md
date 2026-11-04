@@ -1,15 +1,15 @@
 # ChargeGap India — EV Infrastructure Gap Map & Optimizer
 
-Techfest 2026–27, IIT Bombay: Challenge 1 — EV Infrastructure Map India (Slices 0 + 1 + Roadmap Milestones 1–6).
+Techfest 2026–27, IIT Bombay: Challenge 1 — EV Infrastructure Map India (Slices 0 + 1 + Roadmap Milestones 1–6 + Phase 2).
 
 - **State entry point**: `python run_all.py --offline`. Open interactive Leaflet map at `outputs/tn_gap_map.html`.
 - **Interactive Dashboard & API**: `python run_dashboard.py` (hosts at `http://127.0.0.1:8000`).
 - **National entry point**: `python run_india.py --offline`.
-- **Offline Commit Gate**: `python check.py check` (**145 tests passing** in < 15 seconds).
+- **Offline Commit Gate**: `python check.py check` (**202 tests passing** in < 45 seconds).
 
 ---
 
-## Capabilities & Architecture (Milestones 1 to 6)
+## Capabilities & Architecture (Milestones 1 to 6 & Phase 2)
 
 1. **Slice 0 & 1 — Spatial Gap Scoring & Hotspot Discovery**:
    - Deduplicated spatial clustering of OSM/OCM chargers using 25 m metric buffers.
@@ -32,12 +32,23 @@ Techfest 2026–27, IIT Bombay: Challenge 1 — EV Infrastructure Map India (Sli
    - Siting candidates generated along flagged corridor gaps and high-deficit / Gi* hotspot centroids under budget $K$.
    - Road classification flow proxies (National Highways receive higher flow weights).
 6. **Milestone 5 — FastAPI Backend & Interactive Leaflet Dashboard**:
-   - RESTful API endpoints: `GET /api/districts`, `GET /api/districts/{id}`, `GET /api/corridors`, `GET /api/sites`, `POST /api/whatif`.
-   - Rich Leaflet web application with layer toggles, filterable district table, drill-down assessment card, and real-time Monte Carlo scenario simulator.
+   - RESTful API endpoints: `GET /api/districts`, `GET /api/districts/{id}`, `GET /api/corridors`, `GET /api/sites`, `POST /api/whatif`, `GET /api/districts/{id}/uncertainty`, `POST /api/assistant`.
+   - Rich Leaflet web application with layer toggles, filterable district table, drill-down assessment card, real-time Monte Carlo scenario simulator, and Bayesian uncertainty panel.
 7. **Milestone 6 — Validation & Ground-Truth Verification**:
    - Comprehensive robustness report (`outputs/validation_report.md`) cross-validating MoP 2024 guidelines and CEA benchmarks.
    - 30-charger ground-truth spot check dataset (`data/samples/spot_check_TEMPLATE.csv`).
    - 5-minute jury presentation script (`DEMO_SCRIPT.md`) with authoritative Q&A pre-emptions.
+8. **Phase 2 — Bayesian Uncertainty Layer (pgmpy)**:
+   - 10-node discrete Bayesian network with exact Variable Elimination inference (`src/bayes_layer.py`).
+   - Transparent expert priors in `config/bn_priors.yaml` with regulatory citations (CEA, NITI Aayog, MoP 2024, BEE) and clear "analyst judgement" tags.
+   - Exact marginalization over unobserved telemetry, dynamically widening the 80% credible interval ($[P_{10}, P_{90}]$) to honestly reflect data scarcity.
+   - Dirichlet prior-sensitivity analysis ($\alpha=15.0$) flagging prior-dominated districts, plus directional driver attribution.
+   - Dual-range reconciliation against Phase 1 Monte Carlo simulation with automated agreement classification in `outputs/bayes_district_posteriors.csv`.
+9. **Phase 2 — Grounded Planner Assistant (`src/assistant/`)**:
+   - Dual interchangeable backends: deterministic offline rule-based router and Anthropic Claude tool-calling with automatic zero-downtime offline fallback.
+   - Strict read-only tool execution over pipeline outputs (`outputs/*.csv`, `outputs/*.geojson`) with zero memory hallucinations.
+   - Institutional guardrails: prompt injection sanitization, unranked district transparency, and mandatory `UNVERIFIED` propagation for MoP 2024 indicative 25 km guidelines.
+   - 1-click "⚡ Explain This Ranking" in interactive dashboard table and drill-down card.
 
 ## Install and run (PowerShell)
 

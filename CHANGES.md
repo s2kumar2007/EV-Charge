@@ -1,5 +1,21 @@
 # Changes in this version
 
+## 2026-11-04 - Phase 2 (Bayesian Uncertainty Layer & Grounded Planner Assistant)
+
+- Phase 2 additions:
+  - Bayesian Uncertainty Layer (`src/bayes_layer.py`): 10-node discrete Bayesian network using pgmpy with exact Variable Elimination marginalization. Handles missing district telemetry without fabricating values.
+  - Expert Priors Catalog (`config/bn_priors.yaml`): Fully documented conditional probability distributions with regulatory citations (CEA, NITI Aayog, MoP, BEE) and analyst judgment rationale.
+  - Bayesian Map Layer & API (`outputs/bayes_district_posteriors.csv`, `api/main.py`): Adds `GET /api/districts/{id}/uncertainty`, interactive Leaflet Bayesian uncertainty layer, and 80% credible interval visualization in dashboard drill-down.
+  - Prior Sensitivity & Agreement: Dirichlet perturbation ($\alpha=15.0$) checking prior domination and cross-reconciling Bayesian posteriors with Phase 1 Monte Carlo sizing.
+  - Grounded Planner Assistant (`src/assistant/`):
+    - Read-only tool layer (`src/assistant/tools.py`) over pipeline outputs with data flag and UNVERIFIED propagation.
+    - District name resolver (`src/assistant/resolver.py`) with fuzzy matching, aliases (e.g., Trichy, Ooty, Covai), and typo handling.
+    - Dual backends (`src/assistant/offline_backend.py`, `src/assistant/llm_backend.py`): deterministic offline router and Anthropic Claude tool-calling with seamless zero-downtime offline fallback.
+    - Institutional guardrails: prompt injection defense, zero memory hallucinations, unranked district transparency, and local query auditing (`outputs/assistant_log.jsonl`).
+    - UI Integration: `POST /api/assistant`, `/assistant` dashboard chat panel, and 1-click "⚡ Explain This Ranking" buttons in table and drill-down.
+  - Pipeline Integration: Step 12e in `run_all.py` automatically generates Bayesian posteriors.
+  - Test Suite: 202 tests passing across all unit, integration, and E2E suites.
+
 ## 2026-11-02 - Roadmap Completion (Milestones 1 to 6)
 
 - Milestone 1 (Corridors): NH-48 / Tamil Nadu highway geometry from OSM, metric UTM snapping, dual-run consecutive spacing, and MoP 2024 guideline compliance (25 km / 100 km).
