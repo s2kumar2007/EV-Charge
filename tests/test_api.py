@@ -101,3 +101,76 @@ def test_run_dashboard_module_imports():
     import run_dashboard
     assert hasattr(run_dashboard, "launch_dashboard")
     assert hasattr(run_dashboard, "main")
+
+
+def test_get_district_uncertainty_endpoint(client):
+    """Verify GET /api/districts/{id}/uncertainty and /districts/{id}/uncertainty."""
+    for path in ["/api/districts/chennai/uncertainty", "/districts/chennai/uncertainty"]:
+        resp = client.get(path)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["district_key"] == "chennai"
+        assert "req_p10" in data and "req_p50" in data and "req_p90" in data
+        assert "req_ci_80_width" in data
+        assert "most_likely_gap" in data
+        assert "prior_dominated" in data
+        assert "model_agreement" in data
+        assert "provenance_notice" in data
+
+
+def test_whatif_with_bayesian_overrides(client):
+    """Verify POST /api/whatif supports Bayesian evidence overrides and returns Bayesian posteriors."""
+    payload = {
+        "adoption_growth_pct": 30.0,
+        "target_ratio": 20.0,
+        "undercount_factor": 1.2,
+        "ev_growth_override": "high",
+        "grid_override": "low",
+    }
+    resp = client.post("/api/whatif", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "parameters" in data
+    assert data["parameters"].get("ev_growth_override") == "high"
+    assert "districts" in data
+
+
+def test_dashboard_has_uncertainty_panel(client):
+    """Verify static dashboard HTML contains the Bayesian uncertainty UI elements."""
+    resp = client.get("/")
+    assert resp.status_code == 200
+    html = resp.text
+    assert "Bayesian Uncertainty" in html
+    assert "Credible Interval" in html
+    assert "Deficit Severity" in html
+
+
+def test_post_assistant_endpoints(client):
+    """Verify POST /api/assistant and POST /assistant answer questions with evidence and warnings."""
+    payload = {"question": "Why is Krishnagiri ranked 3rd?"}
+    for path in ["/api/assistant", "/assistant"]:
+        resp = client.post(path, json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert "Krishnagiri" in data["answer"]
+        assert "evidence" in data
+        assert "warnings" in data
+        assert data["backend"] in ("offline", "llm")
+
+    # Out of scope refusal test
+    resp_refused = client.post("/api/assistant", json={"question": "What is the capital of Germany?"})
+    assert resp_refused.status_code == 200
+    assert resp_refused.json()["status"] == "refused"
+
+
+def test_dashboard_has_assistant_chat_panel(client):
+    """Verify dashboard contains docked Planner Assistant chat panel and Explain button."""
+    resp = client.get("/")
+    assert resp.status_code == 200
+    html = resp.text
+    assert "Planner Assistant" in html
+    assert "chat-messages" in html
+    assert "chat-input" in html
+    assert "Offline Mode" in html
+    assert "Explain This Ranking" in html

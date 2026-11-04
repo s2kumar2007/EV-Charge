@@ -1,15 +1,15 @@
 # ChargeGap India — EV Infrastructure Gap Map & Optimizer
 
-Techfest 2026–27, IIT Bombay: Challenge 1 — EV Infrastructure Map India (Slices 0 + 1 + Roadmap Milestones 1–6).
+Techfest 2026–27, IIT Bombay: Challenge 1 — EV Infrastructure Map India (Slices 0 + 1 + Roadmap Milestones 1–6 + Phase 2).
 
 - **State entry point**: `python run_all.py --offline`. Open interactive Leaflet map at `outputs/tn_gap_map.html`.
 - **Interactive Dashboard & API**: `python run_dashboard.py` (hosts at `http://127.0.0.1:8000`).
 - **National entry point**: `python run_india.py --offline`.
-- **Offline Commit Gate**: `python check.py check` (**145 tests passing** in < 15 seconds).
+- **Offline Commit Gate**: `python check.py check` (**202 tests passing** in < 45 seconds).
 
 ---
 
-## Capabilities & Architecture (Milestones 1 to 6)
+## Capabilities & Architecture (Milestones 1 to 6 & Phase 2)
 
 1. **Slice 0 & 1 — Spatial Gap Scoring & Hotspot Discovery**:
    - Deduplicated spatial clustering of OSM/OCM chargers using 25 m metric buffers.
@@ -32,12 +32,29 @@ Techfest 2026–27, IIT Bombay: Challenge 1 — EV Infrastructure Map India (Sli
    - Siting candidates generated along flagged corridor gaps and high-deficit / Gi* hotspot centroids under budget $K$.
    - Road classification flow proxies (National Highways receive higher flow weights).
 6. **Milestone 5 — FastAPI Backend & Interactive Leaflet Dashboard**:
-   - RESTful API endpoints: `GET /api/districts`, `GET /api/districts/{id}`, `GET /api/corridors`, `GET /api/sites`, `POST /api/whatif`.
-   - Rich Leaflet web application with layer toggles, filterable district table, drill-down assessment card, and real-time Monte Carlo scenario simulator.
+   - RESTful API endpoints: `GET /api/districts`, `GET /api/districts/{id}`, `GET /api/corridors`, `GET /api/sites`, `POST /api/whatif`, `GET /api/districts/{id}/uncertainty`, `POST /api/assistant`.
+   - Rich Leaflet web application with layer toggles, filterable district table, drill-down assessment card, real-time Monte Carlo scenario simulator, and Bayesian uncertainty panel.
 7. **Milestone 6 — Validation & Ground-Truth Verification**:
    - Comprehensive robustness report (`outputs/validation_report.md`) cross-validating MoP 2024 guidelines and CEA benchmarks.
    - 30-charger ground-truth spot check dataset (`data/samples/spot_check_TEMPLATE.csv`).
    - 5-minute jury presentation script (`DEMO_SCRIPT.md`) with authoritative Q&A pre-emptions.
+8. **Phase 2 — Bayesian Uncertainty Layer (pgmpy)**:
+   - 10-node discrete Bayesian network with exact Variable Elimination inference (`src/bayes_layer.py`).
+   - Transparent expert priors in `config/bn_priors.yaml` with regulatory citations (CEA, NITI Aayog, MoP 2024, BEE) and clear "analyst judgement" tags.
+   - Exact marginalization over unobserved telemetry, dynamically widening the 80% credible interval ($[P_{10}, P_{90}]$) to honestly reflect data scarcity.
+   - Dirichlet prior-sensitivity analysis ($\alpha=15.0$) flagging prior-dominated districts, plus directional driver attribution.
+   - Dual-range reconciliation against Phase 1 Monte Carlo simulation with automated agreement classification in `outputs/bayes_district_posteriors.csv`.
+9. **Phase 2 — Grounded Planner Assistant (`src/assistant/`)**:
+   - Dual interchangeable backends: deterministic offline rule-based router and Anthropic Claude tool-calling with automatic zero-downtime offline fallback.
+   - Strict read-only tool execution over pipeline outputs (`outputs/*.csv`, `outputs/*.geojson`) with zero memory hallucinations.
+   - Institutional guardrails: prompt injection sanitization, unranked district transparency, and mandatory `UNVERIFIED` propagation for MoP 2024 indicative 25 km guidelines.
+   - 1-click "⚡ Explain This Ranking" in interactive dashboard table and drill-down card.
+
+---
+
+## Disclosures & Academic Integrity
+
+For detailed disclosures on AI code assistance tooling, the dual-backend Planner Assistant (Claude tool-calling + 100% offline fallback), zero-invented-data verification protocols, and expert prior sources in the Bayesian Uncertainty Layer, see [DISCLOSURES.md](DISCLOSURES.md).
 
 ## Install and run (PowerShell)
 
@@ -381,6 +398,74 @@ missing; install requirements to run it, and do not count a skip as validation.
 See `outputs/feasibility.md` for the actual test results and live-fetch limits
 of this development environment. A generated all-missing map proves the
 pipeline handles missing inputs; it does not demonstrate EV demand rankings.
+
+## Planner Assistant (Grounded Tool-Calling Architecture)
+
+ChargeGap India includes an interactive, tool-grounded **Planner Assistant** (`src/assistant/`) that explains rankings, evaluates highway corridor gaps, recommends priority sites, and explains Bayesian uncertainty without hallucinating or inventing data.
+
+### Dual Interchangeable Backends
+1. **Offline Deterministic Backend (Default)**:
+   - Operates 100% offline without internet access or API keys (fully venue-ready for Techfest IIT Bombay).
+   - Uses regex and keyword intent routing combined with fuzzy district name matching (`DistrictResolver`).
+   - Retrieves verified records directly from `outputs/*.csv` and generates structured markdown explanations with required `### Evidence` blocks.
+2. **LLM Tool-Calling Backend (Optional)**:
+   - Uses Anthropic's Claude (`claude-3-5-sonnet-20241022`) with structured tool-use schemas when `ANTHROPIC_API_KEY` is provided.
+   - System prompts forbid memory hallucinations and mandate that every figure must cite a tool result.
+   - **Automatic Offline Fallback**: If `ANTHROPIC_API_KEY` is absent, the network disconnects, or the API times out, the assistant seamlessly answers via the offline backend with zero user-facing errors.
+
+### Strict Institutional Guardrails
+- **Zero Memory Hallucinations**: The assistant refuses to answer questions about EV numbers, charger counts, or policy from internal memory. Every answer is retrieved from project outputs at query time.
+- **Unranked District Transparency**: If asked about a district lacking official VAHAN EV counts (e.g. Ariyalur), the assistant explicitly states that no gap score exists and the district remains unranked.
+- **UNVERIFIED Propagation**: Ministry of Power (MoP) 2024 indicative 25 km highway spacing figures are strictly labeled as `UNVERIFIED` in every answer.
+- **Prompt Injection Defense**: Text from crowdsourced data files (charger names, operator tags) is sanitized before evaluation to prevent prompt injection.
+- **Local Auditing**: Queries are logged locally to `outputs/assistant_log.jsonl` (stripped of keys, capped size).
+
+### Configuration & Environment
+To enable the optional LLM mode:
+```bash
+# In your .env file or shell:
+export ANTHROPIC_API_KEY="sk-ant-..."
+export ASSISTANT_MODEL="claude-3-5-sonnet-20241022"  # Optional, default
+```
+To run the assistant via API or dashboard:
+```bash
+python run_dashboard.py
+# Open http://127.0.0.1:8000 in your browser
+```
+
+### Example Questions
+- *"Why is Krishnagiri ranked 3rd?"*
+- *"Which highway stretch should we fix first?"*
+- *"Where should we build chargers next?"*
+- *"How sure are we about Krishnagiri?"*
+- *"What is the 80% credible interval for required ports in Chennai?"*
+- *"What happens if EV growth is 30% faster?"*
+- *"What are the project limitations?"*
+
+---
+
+## Bayesian Uncertainty Layer & Expert Priors
+
+### What It Does
+Phase 1 sized port deficits using ratio benchmarks and Monte Carlo undercount simulations. The **Phase 2 Bayesian Uncertainty Layer** (`src/bayes_layer.py`) handles missing or noisy telemetry with exact probabilistic inference:
+1. **Marginalization over Missing Evidence**: When a district lacks official VAHAN counts or grid feeder logs, the inference engine marginalizes over unobserved nodes rather than imputing fabricated values. The 80% credible interval ($[P_{10}, P_{90}]$) automatically widens to reflect institutional uncertainty.
+2. **Explicit Expert Prior Provenance**: All Conditional Probability Distributions (CPDs) are cataloged in `config/bn_priors.yaml` with regulatory citations (CEA National Electricity Plan, NITI Aayog Handbook 2021, MoP 2024 Guidelines, BEE) or tagged as `"analyst judgement"`.
+3. **Driver Attribution**: For every district, leave-one-out TVD shifts identify whether demand is driven by EV growth, urbanization, transit exposure, or if uncertainty is driven by unobserved EV registrations.
+4. **Dirichlet Prior Sensitivity**: Perturbs CPD columns with Dirichlet sampling ($lpha=15, N=5$ trials) to verify whether conclusions are data-dominated or prior-dominated.
+
+### How to Edit Priors (`config/bn_priors.yaml`)
+To customize prior beliefs or incorporate new empirical survey data:
+1. Open `config/bn_priors.yaml`.
+2. Locate the node under `nodes: <NodeName>:`.
+3. Update the conditional probability table (`cpt`). **Rule**: Every discrete probability vector or column MUST sum to 1.0 $\pm 10^{-4}$.
+4. Update the mandatory `rationale` and `source` metadata fields.
+5. Re-run `python src/bayes_layer.py` or `python run_all.py` to regenerate `outputs/bayes_district_posteriors.csv`.
+
+### Limitations
+- Discretization uses 3–4 discrete bins per node; continuous variation within bins is approximated via piecewise-linear CDF interpolation.
+- Grid headroom is currently observed as `'unknown'` state across all districts until discom SCADA/feeder telemetry is integrated.
+
+---
 
 ## Limitations before a jury or publication
 

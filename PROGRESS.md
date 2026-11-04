@@ -58,3 +58,42 @@
   - `m4-optimiser` (MILP MCLP + FRLM Candidate Siting)
   - `m5-dashboard` (FastAPI Service & Interactive Leaflet Dashboard)
   - `m6-finale` / `v0.2-finale-ready` (Validation, Spot Checks, and Jury Readiness)
+
+
+## Phase 2: Bayesian Uncertainty & Planner Assistant
+**Date**: 3 November 2026  
+**Branch**: `feat/phase2`  
+**Baseline**: 146 passed on main, tag `m6-finale` verified.
+
+### Phase 2 Progress Log
+- `c9782a7` chore(phase2): create branch, verify main is green and m6-finale exists, log baseline in PROGRESS.md
+- `69c432c` docs(bayes): specify Bayesian network design and provenance in docs/bayes_design.md
+- `2b88ef8` data(bayes): config/bn_priors.yaml with expert parameters and validation
+- `d73eb9b` test(bayes): tests for prior validation, model check, directionality, and missing evidence widening
+- `7363ec3` feat(bayes): build the network from the YAML priors with the pgmpy version shim
+- `8525a57` feat(bayes): discretiser mapping Phase 1 district outputs to node states, with "unknown" handling
+- `139430f` feat(bayes): per-district inference giving posterior over Requirement_class and Gap_class; convert to a point range plus an 80% credible interval
+- `b7f0205` feat(bayes): driver attribution: for each district, report which observed or missing nodes move the posterior most
+- `bb8529a` feat(bayes): prior-sensitivity analysis: perturb CPDs (seeded Dirichlet), report how much requirement ranges change; flag prior-dominated districts
+- `39d246f` feat(bayes): reconcile with the Phase 1 Monte Carlo: output both ranges side by side with an agreement flag
+- `f16f177` feat(bayes): write outputs/bayes_district_posteriors.csv and wire pipeline step 12e
+- `a2346bc` feat(map): "Bayesian uncertainty" map layer and legend noting expert assumptions
+- `6f0b426` feat(api): GET /districts/{id}/uncertainty and extend /api/whatif
+- `736a18b` feat(dashboard): uncertainty panel in drill-down: probability bars, credible interval, drivers, prior-dominated warning
+- `3265fc9` docs(bayes): README section and update validation_report.md with prior-sensitivity results
+- `b493276` test(assistant): tests for the tool layer using fictional outputs
+- `e870a3d` feat(assistant): tool layer (read-only) over outputs/*.csv|geojson with data_flag and UNVERIFIED propagation
+- `386e6b4` feat(assistant): district name resolver with fuzzy matching and tests for typos and aliases
+- `c643de9` test(assistant): golden Q&A tests for the offline back end (17 golden questions)
+- `9321acc` feat(assistant): offline intent router and answer templates, including the "I can't tell you X because Y is missing" path
+- `8de34e4` feat(assistant): LLM back end with tool use, optional dependency, graceful fallback to offline on missing key, timeout or error
+- `c612706` test(assistant): guardrail tests (out-of-scope, injection, synthetic isolation)
+- `fa1650b` feat(api): POST /assistant endpoint returning answer, evidence list, warnings and backend tag
+- `d80220c` feat(dashboard): chat panel docked to the drill-down: suggested questions, evidence expandable, badge, warnings
+- `4568f5d` feat(assistant): "explain this ranking" button on each district for live demo
+- `755dfc3` docs(assistant): README section on assistant architecture, modes, guardrails, and usage
+- `5a4157f` test(phase2): end-to-end integration test over Bayesian pipeline, API uncertainty, and assistant Q&A
+- `b02de17` docs: update report-facing documentation for Phase 2 completion
+- `e3380bf` docs(disclosures): record AI assistance and planner assistant tool use
+- `6eea5e6` docs(demo): extend DEMO_SCRIPT.md with 2-minute Phase 2 jury segment
+- `complete` chore: merge feat/phase2 to main and tag v0.3-phase2

@@ -5,6 +5,7 @@ import traceback
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 import config
+import bayes_layer
 import build_scores
 import checks
 import corridors
@@ -60,6 +61,7 @@ def main(argv=None):
         run_step("Step 12b: highway corridor gaps", corridors.main)
         run_step("Step 12c: charger requirements sizing", requirements_model.main)
         run_step("Step 12d: site optimization and recommendations", site_optimiser.main)
+        run_step("Step 12e: Bayesian uncertainty layer", bayes_layer.main)
         run_step("Step 13: map layers", make_map.main, include_slice1=True)
         run_step("Step 14: complete checks", checks.main, include_slice1=True)
     print(f"\nDone. Open outputs/{config.MAP_FILENAME}. Missing data remain unranked.")

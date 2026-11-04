@@ -1,0 +1,2 @@
+# Optional dependencies for LLM planner assistant (core install stays light)
+anthropic>=0.20,<1

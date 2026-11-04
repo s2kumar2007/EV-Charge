@@ -211,13 +211,99 @@ def main(include_slice1=True, coverage=None):
         except Exception as err:
             print(f"  [warning] Could not add recommended sites layer to map: {err}")
 
+    # Bayesian Uncertainty Layer (from bayes_layer.py)
+    bayes_file = OUTPUTS / "bayes_district_posteriors.csv"
+    if include_slice1 and bayes_file.exists():
+        try:
+            bayes_df = pd.read_csv(bayes_file)
+            bayes_gdf = districts.merge(bayes_df, on=["district_key"], how="left", suffixes=("", "_bayes"))
+            bayes_fg = folium.FeatureGroup(name="Bayesian Uncertainty (80% Credible Interval)", show=False)
+
+            def bayes_style(feature):
+                props = feature.get("properties", {})
+                gap = props.get("most_likely_gap", "")
+                p10 = props.get("req_p10")
+                p90 = props.get("req_p90")
+                width = props.get("req_ci_80_width", 0)
+                flag = str(props.get("data_flag", "")).lower()
+
+                if flag == "insufficient_data" or p10 is None or pd.isna(p10):
+                    fill = "#9e9e9e"
+                elif gap == "severe":
+                    fill = "#c62828"
+                elif gap == "moderate":
+                    fill = "#ef6c00"
+                else:
+                    fill = "#2e7d32"
+
+                opacity = max(0.25, min(0.85, 0.85 - (float(width if width is not None and not pd.isna(width) else 0) / 1000.0) * 0.5))
+                dash = "5, 5" if props.get("prior_dominated") is True or "synthetic" in flag else None
+
+                return {
+                    "fillColor": fill,
+                    "color": "#333333",
+                    "weight": 1.5,
+                    "fillOpacity": opacity,
+                    "dashArray": dash,
+                }
+
+            for idx, r in bayes_gdf.iterrows():
+                d_name = r.get("district", r.get("district_key", "District"))
+                p10 = r.get("req_p10", "N/A")
+                p50 = r.get("req_p50", "N/A")
+                p90 = r.get("req_p90", "N/A")
+                w = r.get("req_ci_80_width", "N/A")
+                p_sev = r.get("prob_severe", 0.0)
+                p_mod = r.get("prob_moderate", 0.0)
+                p_ade = r.get("prob_adequate", 0.0)
+                drivers = r.get("drivers", "N/A")
+                agr = r.get("model_agreement", "N/A")
+                p_dom = "Yes (Dirichlet shift > 25%)" if r.get("prior_dominated") else "No (Data-dominated)"
+                flag = r.get("data_flag", "real")
+
+                p_html = (
+                    f"<div style='font-family: sans-serif; font-size: 13px; min-width: 240px;'>"
+                    f"<b>{html.escape(str(d_name))}</b> (Bayesian Uncertainty)<br>"
+                    f"<b>80% Credible Interval:</b> {p10} to {p90} ports (median: {p50})<br>"
+                    f"<b>Uncertainty Width:</b> {w} ports<br>"
+                    f"<b>Gap Probabilities:</b> Severe {float(p_sev if not pd.isna(p_sev) else 0):.0%}, Mod {float(p_mod if not pd.isna(p_mod) else 0):.0%}, Adeq {float(p_ade if not pd.isna(p_ade) else 0):.0%}<br>"
+                    f"<b>Drivers:</b> {html.escape(str(drivers))}<br>"
+                    f"<b>MC Agreement:</b> {html.escape(str(agr))}<br>"
+                    f"<b>Prior Dominated:</b> {p_dom}<br>"
+                    f"<b>Data Flag:</b> {html.escape(str(flag))}<br>"
+                    f"<small style='color: #666;'><i>Priors: expert assumptions in config/bn_priors.yaml</i></small>"
+                    f"</div>"
+                )
+                bayes_gdf.at[idx, "bayes_popup"] = p_html
+
+            needed_cols = [
+                "geometry", "district_key", "district", "bayes_popup", "req_p10", "req_p50",
+                "req_p90", "req_ci_80_width", "most_likely_gap", "prob_severe", "prob_moderate",
+                "prob_adequate", "drivers", "model_agreement", "prior_dominated", "data_flag"
+            ]
+            clean_gdf = bayes_gdf[[c for c in needed_cols if c in bayes_gdf.columns]].copy()
+            for col in clean_gdf.columns:
+                if pd.api.types.is_datetime64_any_dtype(clean_gdf[col]):
+                    clean_gdf[col] = clean_gdf[col].map(lambda v: v.isoformat() if pd.notna(v) else None)
+
+            folium.GeoJson(
+                clean_gdf,
+                style_function=bayes_style,
+                popup=folium.GeoJsonPopup(fields=["bayes_popup"], labels=False),
+                tooltip=folium.GeoJsonTooltip(fields=["district", "req_p10", "req_p90", "most_likely_gap"], aliases=["District:", "P10 Ports:", "P90 Ports:", "Gap Class:"]),
+            ).add_to(bayes_fg)
+            bayes_fg.add_to(m)
+        except Exception as err:
+            print(f"  [warning] Could not add Bayesian uncertainty layer to map: {err}")
+
     folium.LayerControl(collapsed=False).add_to(m)
     synthetic = int(districts.data_flag.astype(str).str.contains("synthetic", case=False).sum())
     missing = int(districts.ev_total.isna().sum())
     notes = [config.MAP_SOURCE_NOTE, f"{len(districts)} boundary districts; new districts may be missing.",
              f"Missing EV data: {missing}; synthetic: {synthetic}; excluded from composite: {excluded}.",
              "Grey: no data; purple: no chargers; dashed: synthetic; Gi*: red hot / blue cold, FDR corrected.",
-             "Few districts: hotspots are indicative, not conclusive. Basemap tiles need internet."]
+             "Few districts: hotspots are indicative, not conclusive. Basemap tiles need internet.",
+             "Bayesian Uncertainty: 80% credible intervals from expert priors (CEA/NITI Aayog); unobserved data marginalized."]
     if include_slice1:
         notes.extend(population_labels)
     if "ev_measure" in districts:

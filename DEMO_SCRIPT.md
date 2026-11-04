@@ -3,7 +3,7 @@
 **Event**: Techfest 2026–27, IIT Bombay  
 **Challenge**: Challenge 1 — EV Infrastructure Map India (Slice 0 + 1)  
 **Corridor Focus**: Chennai – Vellore – Bengaluru (NH-48) & Tamil Nadu Statewide  
-**Duration**: 5 Minutes (Timed walkthrough with live commands and map interactions)  
+**Duration**: 5–7 Minutes (Timed walkthrough with live commands, map interactions, Bayesian uncertainty, and grounded assistant)  
 
 ---
 
@@ -102,6 +102,48 @@ python run_dashboard.py
 
 ---
 
+### Minute 5:00 – 7:00: Phase 2 — Bayesian Uncertainty & Grounded Planner Assistant
+**Presenter Dialogue**:
+> "In Phase 2, we tackle two major challenges raised in Round 1:
+> First, real-world planning data is often incomplete or noisy. Instead of fabricating missing telemetry, our **Bayesian Uncertainty Layer** (pgmpy) uses exact Variable Elimination to marginalize over unobserved nodes. Notice how an unranked district like Kanyakumari automatically receives an honest, widened 80% credible interval rather than a fake point estimate.
+>
+> Second, busy policymakers cannot parse dozens of CSVs. We built an interactive **Planner Assistant** with dual backends: 100% deterministic offline execution for zero-connectivity competition venues, and Anthropic Claude tool use when online. The assistant enforces strict institutional guardrails: zero memory hallucinations, mandatory evidence citations, and transparent disclosures on unverified guidelines."
+
+**Action 1 (Bayesian Credible Interval & Unranked Honesty)**:
+- In the dashboard, select **Kanyakumari** (unranked district with no chargers in Slice 0/1):
+  - Point to the **Bayesian Uncertainty Card** in the drill-down panel.
+  - Highlight the widened 80% credible interval ($[P_{10}, P_{90}]$) expanding to 115+ ports.
+  - Explain: *"Notice how our Bayesian layer does not guess a single number. It marginalizes over unobserved telemetry, signaling to planners that this district requires field verification before capital commitment."*
+
+**Action 2 (One-Click Ranking Explanation — Zero Typing)**:
+- In the District Rankings table or drill-down card, click the **⚡ Explain** button on **Chennai**:
+  - Show the Planner Assistant panel immediately populating with a structured response:
+    - Current Rank: #1
+    - Total EVs: 34,710
+    - Existing Public Ports: 60
+    - Sized Deficit: ~1,675 ports
+    - Key Drivers: Massive fleet size and low port density.
+  - Click the **Evidence** dropdown: show full provenance citing `outputs/district_gap_scores.csv` and `outputs/charger_requirements.csv` with `data_flag = real`.
+
+**Action 3 (Interactive Assistant Query — Krishnagiri Ranking & Confidence)**:
+- In the Assistant chat input, click the suggested chip or submit:  
+  `"Why is Krishnagiri ranked 3rd and how sure are we?"`
+- Present the assistant's answer:
+  - Details high EV adoption relative to existing public supply (EV-to-port ratio).
+  - Cross-references the Monte Carlo sizing range with the Bayesian 80% credible interval ($[P_{10}: 180, P_{90}: 245]$ ports).
+  - Notes that Dirichlet prior sensitivity confirms the classification is robust.
+
+**Action 4 (Corridor Gap Prioritization & UNVERIFIED Disclosure)**:
+- Ask the assistant:  
+  `"Which highway corridor stretch should we fix first?"`
+- Present the assistant's grounded answer:
+  - Identifies NH-48 between Ranipet and Vellore bypass as the top priority (34.6 km gap).
+  - Point out the prominent disclosure badge in the response:  
+    `[UNVERIFIED: Ministry of Power 2024 indicative 25 km guideline]`.
+  - Explain to the jury: *"Our assistant never presents policy guidance as hard ground truth without flagging its verification status."*
+
+---
+
 ## Anticipated Jury Questions & Authoritative Answers
 
 ### Q1: "What if VAHAN data misses unregistered commercial or retrofitted vehicles?"
@@ -119,6 +161,18 @@ python run_dashboard.py
 ### Q4: "How does the model handle districts with no EV data?"
 > **Answer**:  
 > "In strict compliance with competition rules, we never invent data. Districts without verified VAHAN records receive a `status = 'no_ev_data'` and an empty `rank`. On our dashboard and map, they appear with dashed neutral boundaries and an explicit 'Insufficient Data' banner. They are automatically logged in `TODO_MANUAL.md` for ground verification."
+
+### Q5: "Where did the probability distributions in your Bayesian network come from? Were they learned from data?"
+> **Answer**:  
+> "We are 100% transparent: our Conditional Probability Distributions in `config/bn_priors.yaml` are expert assumptions derived from regulatory benchmarks (CEA National Electricity Plan, NITI Aayog Handbook 2021, BEE, MoP 2024 Guidelines) or labeled as analyst judgement. We never fabricate data or pretend priors are learned from data where telemetry is absent. Furthermore, our Dirichlet sensitivity analysis ($\\alpha=15.0$) proves that district classifications remain stable across prior perturbations."
+
+### Q6: "Can your Planner Assistant hallucinate numbers or cite outdated policy?"
+> **Answer**:  
+> "No. The assistant architecture strictly forbids answering from internal model memory. Every metric, ranking, deficit, and coordinate is fetched at runtime by deterministic tools executing over pipeline artifacts. Every answer terminates with an explicit evidence block and propagates `UNVERIFIED` tags for indicative benchmarks."
+
+### Q7: "What happens if there is no internet connection at the competition venue?"
+> **Answer**:  
+> "Everything runs 100% offline. The analytical pipeline, the FastAPI service, the Leaflet maps with cached assets, and the Planner Assistant all function completely disconnected. If `ANTHROPIC_API_KEY` is absent or the venue has no internet, the assistant's deterministic rule-based router seamlessly handles all questions with zero downtime."
 
 ---
 
