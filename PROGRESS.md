@@ -86,4 +86,5 @@
 - `386e6b4` feat(assistant): district name resolver with fuzzy matching and tests for typos and aliases
 - `c643de9` test(assistant): golden Q&A tests for the offline back end (17 golden questions)
 - `9321acc` feat(assistant): offline intent router and answer templates, including the "I can't tell you X because Y is missing" path
-- `[pending]` feat(assistant): LLM back end with tool use, optional dependency, graceful fallback to offline on missing key, timeout or error
+- `8de34e4` feat(assistant): LLM back end with tool use, optional dependency, graceful fallback to offline on missing key, timeout or error
+- `[pending]` test(assistant): guardrail tests (out-of-scope, injection, synthetic isolation)
