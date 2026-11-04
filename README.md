@@ -50,6 +50,12 @@ Techfest 2026–27, IIT Bombay: Challenge 1 — EV Infrastructure Map India (Sli
    - Institutional guardrails: prompt injection sanitization, unranked district transparency, and mandatory `UNVERIFIED` propagation for MoP 2024 indicative 25 km guidelines.
    - 1-click "⚡ Explain This Ranking" in interactive dashboard table and drill-down card.
 
+---
+
+## Disclosures & Academic Integrity
+
+For detailed disclosures on AI code assistance tooling, the dual-backend Planner Assistant (Claude tool-calling + 100% offline fallback), zero-invented-data verification protocols, and expert prior sources in the Bayesian Uncertainty Layer, see [DISCLOSURES.md](DISCLOSURES.md).
+
 ## Install and run (PowerShell)
 
 The Git repository is the **inner** `chargegap` directory. If starting from the

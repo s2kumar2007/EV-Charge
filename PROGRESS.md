@@ -93,7 +93,7 @@
 - `4568f5d` feat(assistant): "explain this ranking" button on each district for live demo
 - `755dfc3` docs(assistant): README section on assistant architecture, modes, guardrails, and usage
 - `5a4157f` test(phase2): end-to-end integration test over Bayesian pipeline, API uncertainty, and assistant Q&A
-- [pending] docs: update report-facing documentation for Phase 2 completion
+- `b02de17` docs: update report-facing documentation for Phase 2 completion
 - [pending] docs(disclosures): record AI assistance and planner assistant tool use
 - [pending] docs(demo): extend DEMO_SCRIPT.md with 2-minute Phase 2 jury segment
 - [pending] chore: merge feat/phase2 to main and tag v0.3-phase2
