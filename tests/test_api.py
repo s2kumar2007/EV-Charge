@@ -162,3 +162,15 @@ def test_post_assistant_endpoints(client):
     resp_refused = client.post("/api/assistant", json={"question": "What is the capital of Germany?"})
     assert resp_refused.status_code == 200
     assert resp_refused.json()["status"] == "refused"
+
+
+def test_dashboard_has_assistant_chat_panel(client):
+    """Verify dashboard contains docked Planner Assistant chat panel and Explain button."""
+    resp = client.get("/")
+    assert resp.status_code == 200
+    html = resp.text
+    assert "Planner Assistant" in html
+    assert "chat-messages" in html
+    assert "chat-input" in html
+    assert "Offline Mode" in html
+    assert "Explain This Ranking" in html

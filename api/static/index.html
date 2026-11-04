@@ -57,6 +57,11 @@
     .slider-group { margin-bottom: 14px; }
     .slider-label { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; }
     .slider-group input[type="range"] { width: 100%; }
+    .chip-btn {
+      padding: 3px 8px; font-size: 0.68rem; background: #fff; border: 1px solid #cbd5e1;
+      border-radius: 12px; cursor: pointer; color: #334155; transition: all 0.15s;
+    }
+    .chip-btn:hover { background: #e0e7ff; border-color: #6366f1; color: #4338ca; }
     .btn-primary { width: 100%; background: var(--primary); color: #fff; border: none; padding: 10px; font-size: 0.9rem; font-weight: 600; border-radius: 4px; cursor: pointer; }
     .btn-primary:hover { background: var(--primary-dark); }
   </style>
@@ -89,6 +94,7 @@
         <button class="tab-btn" onclick="switchTab('tab-drilldown')">Drill-Down</button>
         <button class="tab-btn" onclick="switchTab('tab-whatif')">What-If</button>
         <button class="tab-btn" onclick="switchTab('tab-sites')">Sites</button>
+        <button class="tab-btn" onclick="switchTab('tab-assistant')">Assistant</button>
       </div>
 
       <!-- Tab 1: Rankings -->
@@ -120,6 +126,36 @@
           Select a district from the table or map to inspect vehicle breakdown, deficit intervals, and spatial hotspots.
         </div>
         <div id="drilldown-details" style="display:none;"></div>
+
+        <!-- Docked Planner Assistant Panel -->
+        <div class="assistant-panel" style="margin-top:16px; border-top:2px solid #e2e8f0; padding-top:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <h4 style="margin:0; font-size:0.85rem; color:#1e293b;">Planner Assistant</h4>
+              <span id="assistant-badge" class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.65rem;">Offline Mode</span>
+            </div>
+            <button style="border:none; background:none; color:#64748b; font-size:0.7rem; cursor:pointer;" onclick="clearChat()">Clear Chat</button>
+          </div>
+
+          <!-- Suggested Quick Prompts -->
+          <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px;">
+            <button class="chip-btn" onclick="askAssistant('Why is Krishnagiri ranked 3rd?')">Why is Krishnagiri #3?</button>
+            <button class="chip-btn" onclick="askAssistant('Which highway stretch should we fix first?')">Highway Corridor Gaps?</button>
+            <button class="chip-btn" onclick="askAssistant('Where should we build chargers next?')">Recommend Priority Sites</button>
+            <button class="chip-btn" onclick="askAssistant('What are the project limitations?')">Project Limitations</button>
+          </div>
+
+          <!-- Chat Messages Container -->
+          <div id="chat-messages" style="max-height:280px; overflow-y:auto; border:1px solid #cbd5e1; border-radius:6px; padding:10px; background:#f8fafc; font-size:0.75rem; margin-bottom:8px;">
+            <div style="color:#64748b; font-style:italic;">Ask any question about charging deficits, corridor compliance, site optimization, or uncertainty.</div>
+          </div>
+
+          <!-- Chat Input -->
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="chat-input" placeholder="Ask assistant about EV infrastructure..." style="flex:1; padding:6px 10px; font-size:0.75rem; border:1px solid #cbd5e1; border-radius:4px;" onkeydown="if(event.key==='Enter') sendChat()">
+            <button class="btn-primary" style="padding:6px 12px; font-size:0.75rem;" onclick="sendChat()">Send</button>
+          </div>
+        </div>
       </div>
 
       <!-- Tab 3: What-if Simulator -->
@@ -319,6 +355,9 @@
         <div class="drilldown-card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
             <h3>${d.district}</h3>
+            <div>
+              <button class="btn-primary" style="padding:4px 8px; font-size:0.7rem; background:#4f46e5; border-radius:3px; cursor:pointer;" onclick="explainCurrentDistrict('${d.district_key || d.district}')">⚡ Explain This Ranking</button>
+            </div>
             <div>
               <span class="badge ${d.data_flag === 'real' ? 'badge-real' : 'badge-missing'}">${d.data_flag || 'real'}</span>
               ${hotspotBadge}

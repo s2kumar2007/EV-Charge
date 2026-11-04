@@ -88,4 +88,5 @@
 - `9321acc` feat(assistant): offline intent router and answer templates, including the "I can't tell you X because Y is missing" path
 - `8de34e4` feat(assistant): LLM back end with tool use, optional dependency, graceful fallback to offline on missing key, timeout or error
 - `c612706` test(assistant): guardrail tests (out-of-scope, injection, synthetic isolation)
-- `[pending]` feat(api): POST /assistant endpoint returning answer, evidence list, warnings and backend tag
+- `fa1650b` feat(api): POST /assistant endpoint returning answer, evidence list, warnings and backend tag
+- `[pending]` feat(dashboard): chat panel docked to the drill-down: suggested questions, evidence expandable, badge, warnings
