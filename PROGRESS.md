@@ -84,4 +84,5 @@
 - `b493276` test(assistant): tests for the tool layer using fictional outputs
 - `e870a3d` feat(assistant): tool layer (read-only) over outputs/*.csv|geojson with data_flag and UNVERIFIED propagation
 - `386e6b4` feat(assistant): district name resolver with fuzzy matching and tests for typos and aliases
-- `[pending]` test(assistant): golden Q&A tests for the offline back end (17 golden questions)
+- `c643de9` test(assistant): golden Q&A tests for the offline back end (17 golden questions)
+- `[pending]` feat(assistant): offline intent router and answer templates, including the "I can't tell you X because Y is missing" path

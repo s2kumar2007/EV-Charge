@@ -337,8 +337,10 @@ class AssistantTools:
         """
         Execute Monte Carlo what-if parameter simulation.
         """
-        # Read from district gap scores
+        # Read from district gap scores or index
         df = self._load_df("district_gap_scores.csv")
+        if df.empty:
+            df = self._load_df("district_gap_index.csv")
         if df.empty:
             return {"status": "error", "message": "District score data unavailable for simulation."}
 
