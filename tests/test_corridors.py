@@ -179,3 +179,31 @@ def test_corridor_spacing_fictional_line():
     # Verify audit columns
     for col in ("confidence", "drivers", "data_flag"):
         assert col in gaps_df.columns, f"Missing required column {col}"
+
+
+def test_zero_length_corridor_gap_maintains_linestring_geometry():
+    """Verify that 0-length gaps (e.g. charger at corridor origin) produce LineString geometries, not Point."""
+    corridor_geom = LineString([(0, 0), (50000, 0)])
+    chargers_df = pd.DataFrame([
+        {"id": "ORIGIN_SITE", "name": "At Origin", "longitude": 0, "latitude": 0, "confidence": 0.9, "data_flag": "real"}
+    ])
+    snapped = snap_chargers_to_corridor(
+        corridor_geom=corridor_geom,
+        chargers_df=chargers_df,
+        buffer_meters=1000.0,
+        metric_crs=None,
+    )
+    gaps_df, gaps_gdf = calculate_corridor_spacing(
+        corridor_id="NH-ZERO",
+        corridor_name="Zero Gap Test",
+        corridor_geom=corridor_geom,
+        snapped_chargers=snapped,
+        max_gap_km=20.0,
+        metric_crs=None,
+    )
+    assert len(gaps_df) >= 1
+    # First segment (origin to origin site) has gap_km == 0
+    assert gaps_df.iloc[0]["gap_km"] == 0.0
+    # Every feature geometry MUST be a LineString for GIS layer homogeneity
+    geom_types = [g.geom_type for g in gaps_gdf.geometry]
+    assert all(gt == "LineString" for gt in geom_types), f"Found non-LineString geometries: {geom_types}"

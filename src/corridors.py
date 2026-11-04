@@ -171,7 +171,8 @@ def calculate_corridor_spacing(
         if gap_m > 0:
             seg_proj = substring(corridor_proj, start_m, end_m)
         else:
-            seg_proj = corridor_proj.interpolate(start_m)
+            pt = corridor_proj.interpolate(start_m)
+            seg_proj = LineString([pt, pt])
 
         if metric_crs and not seg_proj.is_empty:
             seg_geo = gpd.GeoSeries([seg_proj], crs=metric_crs).to_crs("EPSG:4326").iloc[0]
