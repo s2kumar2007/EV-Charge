@@ -89,6 +89,20 @@ def _load_enriched_districts() -> pd.DataFrame:
             hot_subset = hot_df[hot_cols].rename(columns={"class": "hotspot_class"})
             df = df.merge(hot_subset, on="district_key", how="left")
 
+    # Enrich with Bayesian uncertainty posteriors and credible intervals
+    bayes_file = OUTPUTS / "bayes_district_posteriors.csv"
+    if bayes_file.exists() and "district_key" in df.columns:
+        bayes_df = pd.read_csv(bayes_file)
+        if "district_key" in bayes_df.columns:
+            bayes_cols = [
+                "district_key", "req_p10", "req_p50", "req_p90", "req_ci_80_width",
+                "prob_adequate", "prob_moderate", "prob_severe", "most_likely_gap",
+                "top_driver_1", "top_driver_2", "prior_dominated", "p50_shift_ratio",
+                "model_agreement", "agreement_note"
+            ]
+            bayes_subset = bayes_df[[c for c in bayes_cols if c in bayes_df.columns]]
+            df = df.merge(bayes_subset, on="district_key", how="left")
+
     return df
 
 
@@ -116,6 +130,31 @@ def get_district(district_key: str) -> Dict[str, Any]:
     if match.empty:
         raise HTTPException(status_code=404, detail=f"District '{district_key}' not found.")
     return _clean_records(match)[0]
+
+
+@app.get("/api/districts/{district_key}/uncertainty")
+@app.get("/districts/{district_key}/uncertainty")
+def get_district_uncertainty(district_key: str) -> Dict[str, Any]:
+    """Retrieve detailed Bayesian uncertainty posterior and sensitivity analysis for a district."""
+    bayes_file = OUTPUTS / "bayes_district_posteriors.csv"
+    if not bayes_file.exists():
+        raise HTTPException(status_code=404, detail="Bayesian posteriors output not found. Run bayes_layer.py first.")
+
+    df = pd.read_csv(bayes_file)
+    target_key = norm_key(district_key)
+    match = df[df["district_key"].astype(str).str.lower() == target_key.lower()]
+    if match.empty and "district" in df.columns:
+        match = df[df["district"].apply(norm_key) == target_key]
+
+    if match.empty:
+        raise HTTPException(status_code=404, detail=f"District '{district_key}' not found in Bayesian posteriors.")
+
+    row = _clean_records(match)[0]
+    row["provenance_notice"] = (
+        "Expert prior assumptions cataloged in config/bn_priors.yaml (CEA/NITI Aayog/MoP/BEE). "
+        "Marginalized over unobserved telemetry without data fabrication."
+    )
+    return row
 
 
 @app.get("/api/corridors")
@@ -147,6 +186,8 @@ class WhatIfRequest(BaseModel):
     target_ratio: float = 20.0
     undercount_factor: float = 1.2
     n_simulations: int = 150
+    ev_growth_override: Optional[str] = None
+    grid_override: Optional[str] = None
 
 
 @app.post("/api/whatif")
@@ -223,6 +264,8 @@ def calculate_whatif(req: WhatIfRequest) -> Dict[str, Any]:
             "target_ratio": req.target_ratio,
             "undercount_factor": req.undercount_factor,
             "n_simulations": req.n_simulations,
+            "ev_growth_override": req.ev_growth_override,
+            "grid_override": req.grid_override,
         },
         "summary": {
             "total_simulated_evs": total_evs,

@@ -77,4 +77,5 @@
 - `bb8529a` feat(bayes): prior-sensitivity analysis: perturb CPDs (seeded Dirichlet), report how much requirement ranges change; flag prior-dominated districts
 - `39d246f` feat(bayes): reconcile with the Phase 1 Monte Carlo: output both ranges side by side with an agreement flag
 - `f16f177` feat(bayes): write outputs/bayes_district_posteriors.csv and wire pipeline step 12e
-- `[pending]` feat(map): "Bayesian uncertainty" map layer and legend noting expert assumptions
+- `a2346bc` feat(map): "Bayesian uncertainty" map layer and legend noting expert assumptions
+- `[pending]` feat(api): GET /districts/{id}/uncertainty and extend /api/whatif

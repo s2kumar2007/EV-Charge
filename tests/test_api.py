@@ -101,3 +101,35 @@ def test_run_dashboard_module_imports():
     import run_dashboard
     assert hasattr(run_dashboard, "launch_dashboard")
     assert hasattr(run_dashboard, "main")
+
+
+def test_get_district_uncertainty_endpoint(client):
+    """Verify GET /api/districts/{id}/uncertainty and /districts/{id}/uncertainty."""
+    for path in ["/api/districts/chennai/uncertainty", "/districts/chennai/uncertainty"]:
+        resp = client.get(path)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["district_key"] == "chennai"
+        assert "req_p10" in data and "req_p50" in data and "req_p90" in data
+        assert "req_ci_80_width" in data
+        assert "most_likely_gap" in data
+        assert "prior_dominated" in data
+        assert "model_agreement" in data
+        assert "provenance_notice" in data
+
+
+def test_whatif_with_bayesian_overrides(client):
+    """Verify POST /api/whatif supports Bayesian evidence overrides and returns Bayesian posteriors."""
+    payload = {
+        "adoption_growth_pct": 30.0,
+        "target_ratio": 20.0,
+        "undercount_factor": 1.2,
+        "ev_growth_override": "high",
+        "grid_override": "low",
+    }
+    resp = client.post("/api/whatif", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "parameters" in data
+    assert data["parameters"].get("ev_growth_override") == "high"
+    assert "districts" in data
