@@ -23,7 +23,30 @@ import geopandas as gpd
 from shapely.geometry import Point
 
 import config
-from utils import OUTPUTS, ensure_dirs
+from utils import OUTPUTS, PROCESSED, ensure_dirs
+
+
+def get_district_coordinates() -> Dict[str, Tuple[float, float]]:
+    """Lookup representative latitude and longitude per district from processed boundaries."""
+    coords = {}
+    for cand_file in [
+        PROCESSED / "districts_scored_deduplicated.geojson",
+        PROCESSED / "districts_scored.geojson",
+        PROCESSED / "districts_tamil-nadu.geojson",
+    ]:
+        if cand_file.exists():
+            try:
+                bgdf = gpd.read_file(cand_file)
+                for _, r in bgdf.iterrows():
+                    d_key = str(r.get("district_key", "")).lower().strip()
+                    if d_key and r.geometry is not None and not r.geometry.is_empty:
+                        pt = r.geometry.centroid
+                        coords[d_key] = (float(pt.y), float(pt.x))
+                if coords:
+                    break
+            except Exception:
+                pass
+    return coords
 
 
 def _calc_distance_km(p1: Dict[str, Any], p2: Dict[str, Any]) -> float:
@@ -162,6 +185,7 @@ def generate_candidate_sites(
     hotspots_df: Optional[pd.DataFrame] = None,
     requirements_df: Optional[pd.DataFrame] = None,
     grid_capacity_data: Optional[Dict[str, float]] = None,
+    district_coords: Optional[Dict[str, Tuple[float, float]]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Generate candidate siting locations along flagged corridors and high-deficit Gi* hotspots.
@@ -171,26 +195,38 @@ def generate_candidate_sites(
       hotspots_df: Moran's Gi* hotspot classifications per district.
       requirements_df: Sizing deficit ports per district.
       grid_capacity_data: Real substation capacity dict if available.
+      district_coords: Optional mapping from district_key to (lat, lon).
     Returns:
       List of candidate site dicts with coordinates, type, priority, grid status, and drivers.
     """
     candidates = []
+    dist_coords = district_coords if district_coords is not None else get_district_coordinates()
 
     # 1. Highway Corridor Gaps
     if corridor_gaps_df is not None and not corridor_gaps_df.empty:
         flagged = corridor_gaps_df
         if "flagged" in corridor_gaps_df.columns:
             flagged = corridor_gaps_df[corridor_gaps_df["flagged"] == True]
+        elif "flag_regular_gap" in corridor_gaps_df.columns:
+            flagged = corridor_gaps_df[corridor_gaps_df["flag_regular_gap"] == True]
 
         for _, row in flagged.iterrows():
             cid = str(row.get("corridor_id", "NH"))
-            start_m = float(row.get("start_distance_m", 0.0))
-            end_m = float(row.get("end_distance_m", row.get("spacing_km", 0.0) * 1000.0))
-            gap_km = float(row.get("spacing_km", (end_m - start_m) / 1000.0))
-            midpoint_km = round((start_m + end_m) / 2000.0, 1)
+            gap_km = float(row.get("gap_km", row.get("spacing_km", 0.0)))
+            if gap_km <= 0.0:
+                continue
+            start_km = float(row.get("start_km", row.get("start_distance_m", 0.0) / 1000.0))
+            end_km = float(row.get("end_km", row.get("end_distance_m", (start_km + gap_km) * 1000.0) / 1000.0))
+            midpoint_km = round((start_km + end_km) / 2.0, 1)
 
-            lon = float(row.get("midpoint_lon", row.get("longitude", 80.0)))
-            lat = float(row.get("midpoint_lat", row.get("latitude", 13.0)))
+            geom = getattr(row, "geometry", None)
+            if geom is not None and hasattr(geom, "geom_type") and geom.geom_type == "LineString" and not geom.is_empty:
+                pt = geom.interpolate(0.5, normalized=True)
+                lon = float(pt.x)
+                lat = float(pt.y)
+            else:
+                lon = float(row.get("midpoint_lon", row.get("longitude", 80.0)))
+                lat = float(row.get("midpoint_lat", row.get("latitude", 13.0)))
 
             site_id = f"CAND-CORR-{cid}-{int(midpoint_km)}"
             grid_cap = grid_capacity_data.get(site_id) if grid_capacity_data else None
@@ -222,16 +258,17 @@ def generate_candidate_sites(
 
         for _, row in dist_data.iterrows():
             d_name = row.get("district", "Unknown")
-            d_key = row.get("district_key", str(d_name).lower().strip())
-            gi_type = str(row.get("hotspot_type", "Not Significant"))
+            d_key = str(row.get("district_key", str(d_name).lower().strip())).lower().strip()
+            gi_type = str(row.get("class", row.get("hotspot_type", "Not Significant")))
             deficit = float(row.get("ports_deficit", 0.0))
             if pd.isna(deficit):
                 deficit = 0.0
 
-            is_hot = "Hot" in gi_type
+            is_hot = "hot" in gi_type.lower()
             if is_hot or deficit > 5:
-                lat = float(row.get("latitude", 13.0))
-                lon = float(row.get("longitude", 80.0))
+                def_lat, def_lon = dist_coords.get(d_key, (13.0, 80.0))
+                lat = float(row.get("latitude", def_lat))
+                lon = float(row.get("longitude", def_lon))
                 site_id = f"CAND-URBAN-{d_key}"
                 grid_cap = grid_capacity_data.get(site_id) if grid_capacity_data else None
                 grid_str = f"grid capacity {grid_cap:.1f} MW" if grid_cap is not None else "grid unconstrained (no official grid data available)"
@@ -276,8 +313,13 @@ def solve_corridor_frlm(
     weights = road_class_weights or {"EXPRESSWAY": 2.0, "NH": 1.5, "SH": 1.0, "OTHER": 0.8}
 
     gaps = corridor_gaps_df.copy()
+    if "filter_mode" in gaps.columns and "high_confidence" in set(gaps["filter_mode"]):
+        gaps = gaps[gaps["filter_mode"] == "high_confidence"]
+
     if "flagged" in gaps.columns:
         gaps = gaps[gaps["flagged"] == True]
+    elif "flag_regular_gap" in gaps.columns:
+        gaps = gaps[gaps["flag_regular_gap"] == True]
 
     if gaps.empty:
         return pd.DataFrame()
@@ -295,10 +337,14 @@ def solve_corridor_frlm(
             r_class = "OTHER"
 
         w = weights.get(r_class, 1.0)
-        gap_km = float(row.get("spacing_km", 0.0))
-        start_m = float(row.get("start_distance_m", 0.0))
-        end_m = float(row.get("end_distance_m", start_m + gap_km * 1000.0))
+        gap_km = float(row.get("gap_km", row.get("spacing_km", 0.0)))
+        if gap_km <= 0.0:
+            continue
+        start_km = float(row.get("start_km", row.get("start_distance_m", 0.0) / 1000.0))
+        end_km = float(row.get("end_km", row.get("end_distance_m", (start_km + gap_km) * 1000.0) / 1000.0))
         flow_score = gap_km * w
+
+        geom = getattr(row, "geometry", None)
 
         records.append({
             "row": row,
@@ -307,9 +353,10 @@ def solve_corridor_frlm(
             "road_class": r_class,
             "weight": w,
             "gap_km": gap_km,
-            "start_m": start_m,
-            "end_m": end_m,
+            "start_km": start_km,
+            "end_km": end_km,
             "flow_score": flow_score,
+            "geometry": geom,
             "start_lon": float(row.get("start_lon", row.get("longitude", 80.0))),
             "start_lat": float(row.get("start_lat", row.get("latitude", 13.0))),
             "end_lon": float(row.get("end_lon", row.get("longitude", 80.0))),
@@ -332,11 +379,16 @@ def solve_corridor_frlm(
 
         for s in range(1, stations_to_add + 1):
             fraction = s / (stations_to_add + 1)
-            dist_along = item["start_m"] + fraction * (item["end_m"] - item["start_m"])
-            mid_km = round(dist_along / 1000.0, 1)
+            mid_km = round(item["start_km"] + fraction * (item["end_km"] - item["start_km"]), 1)
 
-            site_lon = item["start_lon"] + fraction * (item["end_lon"] - item["start_lon"])
-            site_lat = item["start_lat"] + fraction * (item["end_lat"] - item["start_lat"])
+            geom = item.get("geometry")
+            if geom is not None and hasattr(geom, "geom_type") and geom.geom_type == "LineString" and not geom.is_empty:
+                pt = geom.interpolate(fraction, normalized=True)
+                site_lon = float(pt.x)
+                site_lat = float(pt.y)
+            else:
+                site_lon = item["start_lon"] + fraction * (item["end_lon"] - item["start_lon"])
+                site_lat = item["start_lat"] + fraction * (item["end_lat"] - item["start_lat"])
 
             site_id = f"REC-CORR-{item['corridor_id']}-{int(mid_km)}"
             recommended.append({
@@ -344,6 +396,7 @@ def solve_corridor_frlm(
                 "name": f"{item['corridor_name']} Waypoint (Km {mid_km})",
                 "corridor_id": item["corridor_id"],
                 "road_class": item["road_class"],
+                "site_type": "highway_corridor",
                 "distance_along_km": mid_km,
                 "latitude": round(site_lat, 6),
                 "longitude": round(site_lon, 6),
@@ -434,21 +487,32 @@ def main():
     corridor_budget = total_budget // 2
     urban_budget = total_budget - corridor_budget
 
-    corridor_file = OUTPUTS / "corridor_gaps.csv"
-    hotspots_file = OUTPUTS / "hotspots_summary.csv"
+    corridor_geojson = OUTPUTS / "corridor_gaps.geojson"
+    corridor_csv = OUTPUTS / "corridor_gaps.csv"
+    hotspots_file = OUTPUTS / "district_hotspots.csv"
+    if not hotspots_file.exists():
+        hotspots_file = OUTPUTS / "hotspots_summary.csv"
     req_file = OUTPUTS / "charger_requirements.csv"
 
     selected_sites = []
 
     # 1. Highway Corridors FRLM
-    if corridor_file.exists():
-        c_df = pd.read_csv(corridor_file)
+    if corridor_geojson.exists():
+        c_df = gpd.read_file(corridor_geojson)
+        frlm_df = solve_corridor_frlm(c_df, site_budget=corridor_budget)
+        if not frlm_df.empty:
+            selected_sites.extend(frlm_df.to_dict("records"))
+            print(f"  Allocated {len(frlm_df)} corridor charging sites along flagged highways.")
+    elif corridor_csv.exists():
+        c_df = pd.read_csv(corridor_csv)
         frlm_df = solve_corridor_frlm(c_df, site_budget=corridor_budget)
         if not frlm_df.empty:
             selected_sites.extend(frlm_df.to_dict("records"))
             print(f"  Allocated {len(frlm_df)} corridor charging sites along flagged highways.")
 
     # 2. Urban Hotspot & Deficit Max-Coverage MILP
+    district_coords = get_district_coordinates()
+
     if hotspots_file.exists() or req_file.exists():
         h_df = pd.read_csv(hotspots_file) if hotspots_file.exists() else pd.DataFrame()
         r_df = pd.read_csv(req_file) if req_file.exists() else pd.DataFrame()
@@ -459,27 +523,33 @@ def main():
         for _, r in source_df.iterrows():
             d_flag = str(r.get("data_flag", "real")).lower()
             if d_flag == "real":
+                d_key = str(r.get("district_key", r.get("district", "dist"))).lower().strip()
                 deficit = float(r.get("ports_deficit", r.get("ports_deficit_p50", 10.0)))
+                d_lat, d_lon = district_coords.get(d_key, (13.0, 80.0))
                 if pd.notna(deficit) and deficit > 0:
                     demand_points.append({
-                        "id": str(r.get("district_key", r.get("district", "dist"))),
+                        "id": d_key,
                         "weight": deficit,
-                        "latitude": float(r.get("latitude", 13.0)),
-                        "longitude": float(r.get("longitude", 80.0)),
+                        "latitude": float(r.get("latitude", d_lat)),
+                        "longitude": float(r.get("longitude", d_lon)),
                     })
 
-        candidates = generate_candidate_sites(None, h_df, r_df)
+        candidates = generate_candidate_sites(None, h_df, r_df, district_coords=district_coords)
         urban_cands = [c for c in candidates if c["site_type"] == "urban_hotspot"]
         if urban_cands and demand_points:
             milp_res = solve_max_coverage_milp(
                 demand_points,
                 urban_cands,
                 site_budget=urban_budget,
-                coverage_radius_km=getattr(config, "OPTIMISER_COVERAGE_RADIUS_KM", 15.0),
+                coverage_radius_km=getattr(config, "OPTIMISER_COVERAGE_RADIUS_KM", 25.0),
             )
             for s in milp_res["selected_sites"]:
-                s["ports_recommended"] = 6
-                selected_sites.append(s)
+                s_copy = dict(s)
+                s_copy["site_type"] = "urban_hotspot"
+                s_copy["ports_recommended"] = 6
+                s_copy["confidence"] = 0.85
+                s_copy["data_flag"] = "recommended"
+                selected_sites.append(s_copy)
             print(f"  Allocated {len(milp_res['selected_sites'])} urban charging sites via MCLP MILP.")
 
     print("[2/3] Ranking and exporting recommended charging sites...")
