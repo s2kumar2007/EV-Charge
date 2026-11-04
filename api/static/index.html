@@ -227,28 +227,90 @@
     async function loadDistricts() {
       try {
         const resp = await fetch('/api/districts');
-        if (!resp.ok) return;
-        allDistricts = await resp.json();
-        const hasSynthetic = allDistricts.some(d => (d.data_flag || '').toLowerCase() === 'synthetic');
-        const warnBanner = document.getElementById('global-warning-banner');
-        if (hasSynthetic && warnBanner) {
-          warnBanner.innerHTML = '&#9888; SYNTHETIC TEST DATA IN USE &mdash; these are not real EV counts. Do not use these results in the submission.';
-          warnBanner.style.display = 'block';
+        if (resp.ok) {
+          allDistricts = await resp.json();
+          const hasSynthetic = allDistricts.some(d => (d.data_flag || '').toLowerCase() === 'synthetic');
+          const warnBanner = document.getElementById('global-warning-banner');
+          if (hasSynthetic && warnBanner) {
+            warnBanner.innerHTML = '&#9888; SYNTHETIC TEST DATA IN USE &mdash; these are not real EV counts. Do not use these results in the submission.';
+            warnBanner.style.display = 'block';
+          }
+          renderRankingsTable(allDistricts);
         }
-        renderRankingsTable(allDistricts);
+
+        const geoResp = await fetch('/api/districts/geojson');
+        if (geoResp.ok) {
+          const geoData = await geoResp.json();
+          renderDistrictsOnMap(geoData);
+        }
       } catch (err) {
         console.warn('API unavailable:', err);
       }
     }
 
+    function renderDistrictsOnMap(geoData) {
+      if (districtLayer) map.removeLayer(districtLayer);
+      districtLayer = L.geoJSON(geoData, {
+        style: function(feature) {
+          const p = feature.properties || {};
+          let fill = '#9e9e9e';
+          if (p.status === 'no chargers') fill = '#7e57c2';
+          else if (p.gap_score !== null && p.gap_score !== undefined) {
+            fill = p.gap_score > 3000 ? '#b71c1c' : (p.gap_score > 1000 ? '#e53935' : (p.gap_score > 500 ? '#fb8c00' : '#43a047'));
+          }
+          const isSynth = (p.data_flag || '').toLowerCase().includes('synthetic');
+          return {
+            fillColor: fill,
+            weight: 1.5,
+            opacity: 1,
+            color: '#333333',
+            fillOpacity: 0.65,
+            dashArray: isSynth ? '5, 5' : null
+          };
+        },
+        onEachFeature: function(feature, layer) {
+          const p = feature.properties || {};
+          const dName = p.district || p.district_key || 'District';
+          const rText = p.rank !== null && p.rank !== undefined ? `#${p.rank}` : 'Unranked';
+          layer.bindPopup(`<b>${dName}</b> (Rank: ${rText})<br>EV Total: ${p.ev_total !== null && p.ev_total !== undefined ? Number(p.ev_total).toLocaleString() : 'N/A'}<br>Gap Score: ${p.gap_score !== null && p.gap_score !== undefined ? Number(p.gap_score).toFixed(1) : 'N/A'}<br>Status: ${p.status || ''}`);
+          layer.on('click', () => {
+            if (p.district_key) selectDistrict(p.district_key);
+          });
+        }
+      });
+      if (document.getElementById('toggle-districts').checked) districtLayer.addTo(map);
+    }
+
     async function loadCorridors() {
       try {
-        const resp = await fetch('/api/corridors');
+        const resp = await fetch('/api/corridors/geojson');
         if (!resp.ok) return;
-        const corridors = await resp.json();
+        const corridorsGeo = await resp.json();
+        renderCorridorsOnMap(corridorsGeo);
       } catch (err) {
         console.warn('Corridors API unavailable:', err);
       }
+    }
+
+    function renderCorridorsOnMap(geoData) {
+      if (corridorLayer) map.removeLayer(corridorLayer);
+      corridorLayer = L.geoJSON(geoData, {
+        style: function(feature) {
+          const p = feature.properties || {};
+          if (p.flag_heavy_gap) {
+            return { color: '#7b1fa2', weight: 5, opacity: 0.9, dashArray: '8, 4' };
+          } else if (p.flag_regular_gap) {
+            return { color: '#d32f2f', weight: 4, opacity: 0.85, dashArray: '6, 4' };
+          } else {
+            return { color: '#2e7d32', weight: 3, opacity: 0.75 };
+          }
+        },
+        onEachFeature: function(feature, layer) {
+          const p = feature.properties || {};
+          layer.bindPopup(`<b>${p.corridor_name || p.corridor_id || 'Corridor'}</b><br>From: ${p.from_location || 'N/A'}<br>To: ${p.to_location || 'N/A'}<br>Gap: <b>${p.gap_km || 0} km</b><br>Assessment: ${p.drivers || ''}`);
+        }
+      });
+      if (document.getElementById('toggle-corridors').checked) corridorLayer.addTo(map);
     }
 
     async function loadSites() {
@@ -524,6 +586,16 @@
       const target = document.getElementById(tabId);
       if (target) target.classList.add('active');
     }
+
+    document.getElementById('toggle-districts').addEventListener('change', e => {
+      if (e.target.checked && districtLayer) districtLayer.addTo(map);
+      else if (districtLayer) map.removeLayer(districtLayer);
+    });
+
+    document.getElementById('toggle-corridors').addEventListener('change', e => {
+      if (e.target.checked && corridorLayer) corridorLayer.addTo(map);
+      else if (corridorLayer) map.removeLayer(corridorLayer);
+    });
 
     document.getElementById('toggle-sites').addEventListener('change', e => {
       if (e.target.checked && siteLayer) siteLayer.addTo(map);
