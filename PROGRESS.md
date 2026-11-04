@@ -85,4 +85,5 @@
 - `e870a3d` feat(assistant): tool layer (read-only) over outputs/*.csv|geojson with data_flag and UNVERIFIED propagation
 - `386e6b4` feat(assistant): district name resolver with fuzzy matching and tests for typos and aliases
 - `c643de9` test(assistant): golden Q&A tests for the offline back end (17 golden questions)
-- `[pending]` feat(assistant): offline intent router and answer templates, including the "I can't tell you X because Y is missing" path
+- `9321acc` feat(assistant): offline intent router and answer templates, including the "I can't tell you X because Y is missing" path
+- `[pending]` feat(assistant): LLM back end with tool use, optional dependency, graceful fallback to offline on missing key, timeout or error
