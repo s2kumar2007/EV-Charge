@@ -285,5 +285,51 @@ def test_prior_sensitivity_dirichlet():
     assert 0.0 <= sens["gap_flip_rate"] <= 1.0
 
 
+def test_reconcile_with_monte_carlo():
+    """Verify model reconciliation assigns high, moderate, or divergent agreement."""
+    from bayes_layer import evaluate_model_agreement
+
+    # Close estimates -> high agreement
+    agr_high, note_high = evaluate_model_agreement(bayes_p50=120, mc_p50=110)
+    assert agr_high == "high_agreement"
+
+    # Moderate gap -> moderate agreement
+    agr_med, note_med = evaluate_model_agreement(bayes_p50=120, mc_p50=60)
+    assert agr_med == "moderate_agreement"
+
+    # Extreme discrepancy -> divergent
+    agr_div, note_div = evaluate_model_agreement(bayes_p50=800, mc_p50=50)
+    assert agr_div == "divergent"
+    assert "divergence" in note_div.lower() or "substantial" in note_div.lower()
+
+
+def test_run_bayesian_pipeline_schema(tmp_path):
+    """Verify run_bayesian_pipeline generates complete posteriors CSV matching required schema."""
+    import pandas as pd
+    from bayes_layer import run_bayesian_pipeline
+
+    out_file = tmp_path / "test_bayes_posteriors.csv"
+    df = run_bayesian_pipeline(
+        output_path=out_file,
+        priors_path=PRIORS_FILE,
+        save_output=True,
+    )
+    assert out_file.exists()
+    assert not df.empty
+    expected_cols = [
+        "district_key", "district", "req_p10", "req_p50", "req_p90", "req_ci_80_width",
+        "prob_adequate", "prob_moderate", "prob_severe", "top_driver_1", "top_driver_2",
+        "drivers", "prior_dominated", "p50_shift_ratio", "monte_carlo_p50",
+        "model_agreement", "agreement_note", "data_flag"
+    ]
+    for col in expected_cols:
+        assert col in df.columns, f"Missing required column: {col}"
+    # Verify no NaN in credible intervals
+    assert not df["req_p50"].isna().any()
+    assert (df["req_p10"] <= df["req_p50"]).all()
+    assert (df["req_p50"] <= df["req_p90"]).all()
+
+
+
 
 

@@ -523,3 +523,145 @@ def run_prior_sensitivity(
         "prior_dominated": prior_dominated,
     }
 
+
+def evaluate_model_agreement(
+    bayes_p50: Optional[float],
+    mc_p50: Optional[float],
+) -> Tuple[str, str]:
+    """
+    Compare Bayesian network credible median with Phase 1 Monte Carlo deficit sizing.
+    Categorizes alignment as 'high_agreement', 'moderate_agreement', or 'divergent'.
+    """
+    if bayes_p50 is None or mc_p50 is None or pd.isna(bayes_p50) or pd.isna(mc_p50):
+        return "uncompared", "Monte Carlo baseline deficit unavailable or missing EV fleet data"
+
+    b = max(float(bayes_p50), 1.0)
+    m = max(float(mc_p50), 1.0)
+    ratio = min(b, m) / max(b, m)
+
+    if ratio >= 0.65:
+        return "high_agreement", "Bayesian credible median closely aligns with Monte Carlo deficit estimate"
+    elif ratio >= 0.35:
+        return "moderate_agreement", "Moderate divergence due to different treatment of unobserved queueing delays vs prior beliefs"
+    else:
+        return "divergent", "Substantial divergence: Bayesian network widens requirements due to unobserved evidence or strict grid constraints"
+
+
+def run_bayesian_pipeline(
+    district_index_path: Optional[Union[str, Path]] = None,
+    requirements_path: Optional[Union[str, Path]] = None,
+    priors_path: Optional[Union[str, Path]] = None,
+    output_path: Optional[Union[str, Path]] = None,
+    save_output: bool = True,
+    seed: int = 2026,
+) -> pd.DataFrame:
+    """
+    Execute end-to-end Bayesian inference across all districts.
+    Reconciles with Phase 1 Monte Carlo requirements and outputs bayes_district_posteriors.csv.
+    """
+    root = Path(__file__).resolve().parents[1]
+    if district_index_path is None:
+        district_index_path = root / "outputs" / "district_gap_index.csv"
+        if not Path(district_index_path).exists():
+            district_index_path = root / "outputs" / "district_gap_scores.csv"
+
+    if requirements_path is None:
+        requirements_path = root / "outputs" / "charger_requirements.csv"
+
+    if priors_path is None:
+        priors_path = root / "config" / "bn_priors.yaml"
+
+    if output_path is None:
+        output_path = root / "outputs" / "bayes_district_posteriors.csv"
+
+    df_districts = pd.read_csv(district_index_path)
+    df_reqs = pd.read_csv(requirements_path) if Path(requirements_path).exists() else pd.DataFrame()
+
+    model = build_bayesian_network(priors_path)
+    quantiles_cache = compute_indicator_quantiles(df_districts)
+
+    mc_lookup: Dict[str, Dict[str, Any]] = {}
+    if not df_reqs.empty and "district_key" in df_reqs.columns:
+        for _, r in df_reqs.iterrows():
+            k = str(r["district_key"]).lower()
+            mc_lookup[k] = {
+                "mc_p10": r.get("ports_deficit_p10", r.get("ports_target_p10")),
+                "mc_p50": r.get("ports_deficit_p50", r.get("ports_target_p50")),
+                "mc_p90": r.get("ports_deficit_p90", r.get("ports_target_p90")),
+                "confidence": r.get("confidence"),
+            }
+
+    records: List[Dict[str, Any]] = []
+    for _, row in df_districts.iterrows():
+        key = str(row.get("district_key", "")).lower()
+        district_name = str(row.get("district", key.title()))
+
+        district_row = row.to_dict()
+        if "confidence" not in district_row or pd.isna(district_row.get("confidence")):
+            if key in mc_lookup and mc_lookup[key].get("confidence") is not None:
+                district_row["confidence"] = mc_lookup[key]["confidence"]
+
+        inf = infer_district_full(model, district_row, quantiles_cache=quantiles_cache)
+        evidence = inf["evidence"]
+        req_post = inf["requirement_posterior"]
+        gap_post = inf["gap_posterior"]
+
+        drivers_list = attribute_top_drivers(model, evidence, target_node="Requirement_class", top_k=2)
+        top1 = drivers_list[0][0] if len(drivers_list) > 0 else "none"
+        top2 = drivers_list[1][0] if len(drivers_list) > 1 else "none"
+        driver_str = format_driver_summary(drivers_list, evidence)
+
+        sens = run_prior_sensitivity(model, evidence, priors_path=priors_path, n_perturbations=5, seed=seed)
+
+        mc_data = mc_lookup.get(key, {})
+        mc_p50 = mc_data.get("mc_p50")
+        agreement, note = evaluate_model_agreement(inf["p50"], mc_p50)
+
+        raw_flag = str(row.get("data_flag", "real")).lower()
+        status = str(row.get("status", "")).lower()
+        if raw_flag == "synthetic" or row.get("synthetic") is True or str(row.get("synthetic", "")).lower() == "true":
+            data_flag = "synthetic"
+        elif status == "no_data" or pd.isna(row.get("ev_total")):
+            data_flag = "insufficient_data"
+        else:
+            data_flag = "real"
+
+        records.append({
+            "district_key": key,
+            "district": district_name,
+            "req_p10": inf["p10"],
+            "req_p50": inf["p50"],
+            "req_p90": inf["p90"],
+            "req_ci_80_width": inf["ci_width"],
+            "prob_adequate": round(float(gap_post.get("adequate", 0.0)), 4),
+            "prob_moderate": round(float(gap_post.get("moderate", 0.0)), 4),
+            "prob_severe": round(float(gap_post.get("severe", 0.0)), 4),
+            "most_likely_gap": inf["most_likely_gap"],
+            "top_driver_1": top1,
+            "top_driver_2": top2,
+            "drivers": driver_str,
+            "prior_dominated": sens["prior_dominated"],
+            "p50_shift_ratio": sens["p50_shift_ratio"],
+            "monte_carlo_p50": mc_p50,
+            "model_agreement": agreement,
+            "agreement_note": note,
+            "data_flag": data_flag,
+        })
+
+    out_df = pd.DataFrame(records)
+    if save_output:
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        out_df.to_csv(output_path, index=False)
+
+    return out_df
+
+
+def main():
+    """CLI entrypoint for run_all.py Step 12e."""
+    run_bayesian_pipeline(save_output=True)
+
+
+if __name__ == "__main__":
+    main()
+
+
