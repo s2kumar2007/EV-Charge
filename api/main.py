@@ -1,9 +1,6 @@
 """
 FastAPI application for ChargeGap India interactive API and dashboard.
 """
-"""
-FastAPI application for ChargeGap India interactive API and dashboard.
-"""
 import math
 import sys
 from pathlib import Path
