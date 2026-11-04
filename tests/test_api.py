@@ -133,3 +133,13 @@ def test_whatif_with_bayesian_overrides(client):
     assert "parameters" in data
     assert data["parameters"].get("ev_growth_override") == "high"
     assert "districts" in data
+
+
+def test_dashboard_has_uncertainty_panel(client):
+    """Verify static dashboard HTML contains the Bayesian uncertainty UI elements."""
+    resp = client.get("/")
+    assert resp.status_code == 200
+    html = resp.text
+    assert "Bayesian Uncertainty" in html
+    assert "Credible Interval" in html
+    assert "Deficit Severity" in html

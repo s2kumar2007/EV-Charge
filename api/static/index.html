@@ -342,6 +342,56 @@
             <b>Drivers & Sizing Methodology:</b><br>
             <span style="color:var(--text);">${d.drivers || 'Standard ratio sizing (20 EVs/port) based on annual VAHAN registrations.'}</span>
           </div>
+
+          <!-- Bayesian Uncertainty Layer Panel -->
+          <div style="margin-top:12px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; background:#fafafa;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <h4 style="margin:0; font-size:0.78rem; color:#1e293b; text-transform:uppercase; letter-spacing:0.5px;">Bayesian Uncertainty Layer</h4>
+              <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.65rem;">80% Credible Interval</span>
+            </div>
+
+            <div style="background:#fff; border:1px solid #cbd5e1; border-radius:4px; padding:6px 8px; margin-bottom:8px;">
+              <div style="display:flex; justify-content:space-between; font-size:0.75rem;">
+                <span><b>Required Ports:</b> ${d.req_p10 !== undefined && d.req_p10 !== null ? d.req_p10 : '-'} &ndash; ${d.req_p90 !== undefined && d.req_p90 !== null ? d.req_p90 : '-'}</span>
+                <span style="color:#64748b;">(P50: <b>${d.req_p50 || '-'}</b> | Width: <b>${d.req_ci_80_width || '-'}</b>)</span>
+              </div>
+            </div>
+
+            <!-- Gap Class Probability Bars -->
+            <div style="font-size:0.7rem; margin-bottom:6px;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                <span>Deficit Severity: <b style="text-transform:capitalize;">${d.most_likely_gap || 'unknown'}</b></span>
+                <span style="color:#64748b;">Sev: ${Math.round((d.prob_severe||0)*100)}% | Mod: ${Math.round((d.prob_moderate||0)*100)}% | Adeq: ${Math.round((d.prob_adequate||0)*100)}%</span>
+              </div>
+              <div style="display:flex; height:8px; border-radius:3px; overflow:hidden; background:#e2e8f0;">
+                <div style="width:${Math.round((d.prob_severe||0)*100)}%; background:#dc2626;" title="Severe: ${Math.round((d.prob_severe||0)*100)}%"></div>
+                <div style="width:${Math.round((d.prob_moderate||0)*100)}%; background:#f59e0b;" title="Moderate: ${Math.round((d.prob_moderate||0)*100)}%"></div>
+                <div style="width:${Math.round((d.prob_adequate||0)*100)}%; background:#16a34a;" title="Adequate: ${Math.round((d.prob_adequate||0)*100)}%"></div>
+              </div>
+            </div>
+
+            <!-- What Drove This -->
+            <div style="font-size:0.7rem; color:#334155; margin-top:6px; background:#fff; padding:6px 8px; border-radius:3px; border:1px solid #e2e8f0;">
+              <b>What Drove This:</b><br>
+              &bull; ${d.top_driver_1 ? d.top_driver_1.replace('missing_', 'Unobserved: ') : 'Baseline prior'}<br>
+              &bull; ${d.top_driver_2 ? d.top_driver_2.replace('missing_', 'Unobserved: ') : 'General network prior'}
+              <div style="margin-top:4px; font-size:0.65rem; color:#64748b;">
+                <b>Model Agreement:</b> ${d.model_agreement || 'uncompared'} &bull; <i>${d.agreement_note || ''}</i>
+              </div>
+            </div>
+
+            <!-- Prior-Dominated Warning -->
+            ${d.prior_dominated ? `
+              <div style="margin-top:6px; font-size:0.68rem; color:#991b1b; background:#fee2e2; padding:6px 8px; border-radius:3px; border:1px solid #fecaca;">
+                <b>&#9888; Prior-Dominated:</b> Sensitivity shifts P50 by ${(Number(d.p50_shift_ratio||0)*100).toFixed(1)}%. Result is sensitive to assumed priors due to sparse telemetry.
+              </div>` : `
+              <div style="margin-top:4px; font-size:0.65rem; color:#15803d;">
+                &#10003; Data-Dominated: Conclusion is robust against prior perturbations.
+              </div>`}
+            <div style="margin-top:6px; font-size:0.62rem; color:#94a3b8; text-align:right;">
+              <i>Priors cataloged in config/bn_priors.yaml (CEA/NITI Aayog/MoP)</i>
+            </div>
+          </div>
           ${d.source_url ? `
           <div style="margin-top:10px; font-size:0.7rem; color:var(--text-muted);">
             <b>Data Source:</b> ${d.source_date || '2026-03-19'} (Lok Sabha Annexure / VAHAN)

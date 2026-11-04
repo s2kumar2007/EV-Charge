@@ -78,4 +78,5 @@
 - `39d246f` feat(bayes): reconcile with the Phase 1 Monte Carlo: output both ranges side by side with an agreement flag
 - `f16f177` feat(bayes): write outputs/bayes_district_posteriors.csv and wire pipeline step 12e
 - `a2346bc` feat(map): "Bayesian uncertainty" map layer and legend noting expert assumptions
-- `[pending]` feat(api): GET /districts/{id}/uncertainty and extend /api/whatif
+- `6f0b426` feat(api): GET /districts/{id}/uncertainty and extend /api/whatif
+- `[pending]` feat(dashboard): uncertainty panel in drill-down: probability bars, credible interval, drivers, prior-dominated warning
