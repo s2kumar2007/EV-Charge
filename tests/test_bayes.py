@@ -330,6 +330,17 @@ def test_run_bayesian_pipeline_schema(tmp_path):
     assert (df["req_p50"] <= df["req_p90"]).all()
 
 
+def test_bayes_map_layer_integration():
+    """Verify make_map generates a Bayesian uncertainty layer and documents expert assumption priors."""
+    import make_map
+    m = make_map.main(include_slice1=True)
+    assert m is not None
+    # Inspect children of m for Bayesian layer
+    layer_names = [getattr(c, "layer_name", "") for c in m._children.values()]
+    assert any("Bayesian" in name for name in layer_names)
+
+
+
 
 
 

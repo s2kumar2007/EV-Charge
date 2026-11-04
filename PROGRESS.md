@@ -76,4 +76,5 @@
 - `b7f0205` feat(bayes): driver attribution: for each district, report which observed or missing nodes move the posterior most
 - `bb8529a` feat(bayes): prior-sensitivity analysis: perturb CPDs (seeded Dirichlet), report how much requirement ranges change; flag prior-dominated districts
 - `39d246f` feat(bayes): reconcile with the Phase 1 Monte Carlo: output both ranges side by side with an agreement flag
-- `[pending]` feat(bayes): write outputs/bayes_district_posteriors.csv and wire pipeline step 12e
+- `f16f177` feat(bayes): write outputs/bayes_district_posteriors.csv and wire pipeline step 12e
+- `[pending]` feat(map): "Bayesian uncertainty" map layer and legend noting expert assumptions
