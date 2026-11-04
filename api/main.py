@@ -1,4 +1,3 @@
-from assistant.llm_backend import PlannerAssistant
 """
 FastAPI application for ChargeGap India interactive API and dashboard.
 """
@@ -20,6 +19,7 @@ from pydantic import BaseModel
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from utils import OUTPUTS, SAMPLES, norm_key
+from assistant.llm_backend import PlannerAssistant
 
 app = FastAPI(title="ChargeGap India API", version="0.2.0")
 

@@ -80,9 +80,9 @@ class DistrictResolver:
         raw = str(query).strip().lower()
         norm = normalize_query(raw)
 
-        # 1. Exact alias lookup
-        if raw in KNOWN_ALIASES:
-            canon = KNOWN_ALIASES[raw]
+        # 1. Exact registered normalized lookup (priority to official boundaries)
+        if norm in self._norm_map:
+            canon = self._norm_map[norm]
             disp = self.known_districts.get(canon, canon.replace("_", " ").title())
             return {
                 "status": "resolved",
@@ -90,9 +90,11 @@ class DistrictResolver:
                 "district": disp,
             }
 
-        # 2. Exact normalized lookup
-        if norm in self._norm_map:
-            canon = self._norm_map[norm]
+        # 2. Regional alias lookup
+        if raw in KNOWN_ALIASES:
+            alias_target = KNOWN_ALIASES[raw]
+            alias_norm = normalize_query(alias_target)
+            canon = self._norm_map.get(alias_norm, alias_target)
             disp = self.known_districts.get(canon, canon.replace("_", " ").title())
             return {
                 "status": "resolved",

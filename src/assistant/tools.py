@@ -166,12 +166,19 @@ class AssistantTools:
             return d
 
         if d["rank"] is None:
+            if d.get("ev_total") is None:
+                exp_msg = f"{d['district']} is currently unranked because official VAHAN EV registration counts are missing. Under competition rules, districts without verified fleet data are never assigned speculative ranks."
+            elif d.get("charger_count", 0) == 0:
+                exp_msg = f"{d['district']} is currently unranked by the basic gap index because it has zero operational public chargers in crowdsourced registries (OSM/OCM). It requires immediate baseline charger provisioning."
+            else:
+                exp_msg = f"{d['district']} is currently unranked due to missing composite indicators."
+
             return {
                 "status": "ok",
                 "district": d["district"],
                 "district_key": d["district_key"],
                 "rank": None,
-                "explanation": f"{d['district']} is currently unranked because official VAHAN EV registration counts are missing. Under competition rules, districts without verified fleet data are never assigned speculative ranks.",
+                "explanation": exp_msg,
                 "data_flag": d["data_flag"],
                 "evidence": d["evidence"],
             }

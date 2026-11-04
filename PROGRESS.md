@@ -91,4 +91,5 @@
 - `fa1650b` feat(api): POST /assistant endpoint returning answer, evidence list, warnings and backend tag
 - `d80220c` feat(dashboard): chat panel docked to the drill-down: suggested questions, evidence expandable, badge, warnings
 - `4568f5d` feat(assistant): "explain this ranking" button on each district for live demo
-- `[pending]` docs(assistant): README section on assistant architecture, modes, guardrails, and usage
+- `755dfc3` docs(assistant): README section on assistant architecture, modes, guardrails, and usage
+- `[pending]` test(phase2): end-to-end integration test over Bayesian pipeline, API uncertainty, and assistant Q&A
