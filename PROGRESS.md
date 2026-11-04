@@ -90,4 +90,5 @@
 - `c612706` test(assistant): guardrail tests (out-of-scope, injection, synthetic isolation)
 - `fa1650b` feat(api): POST /assistant endpoint returning answer, evidence list, warnings and backend tag
 - `d80220c` feat(dashboard): chat panel docked to the drill-down: suggested questions, evidence expandable, badge, warnings
-- `[pending]` feat(assistant): "explain this ranking" button on each district for live demo
+- `4568f5d` feat(assistant): "explain this ranking" button on each district for live demo
+- `[pending]` docs(assistant): README section on assistant architecture, modes, guardrails, and usage

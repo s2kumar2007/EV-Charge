@@ -382,6 +382,51 @@ See `outputs/feasibility.md` for the actual test results and live-fetch limits
 of this development environment. A generated all-missing map proves the
 pipeline handles missing inputs; it does not demonstrate EV demand rankings.
 
+## Planner Assistant (Grounded Tool-Calling Architecture)
+
+ChargeGap India includes an interactive, tool-grounded **Planner Assistant** (`src/assistant/`) that explains rankings, evaluates highway corridor gaps, recommends priority sites, and explains Bayesian uncertainty without hallucinating or inventing data.
+
+### Dual Interchangeable Backends
+1. **Offline Deterministic Backend (Default)**:
+   - Operates 100% offline without internet access or API keys (fully venue-ready for Techfest IIT Bombay).
+   - Uses regex and keyword intent routing combined with fuzzy district name matching (`DistrictResolver`).
+   - Retrieves verified records directly from `outputs/*.csv` and generates structured markdown explanations with required `### Evidence` blocks.
+2. **LLM Tool-Calling Backend (Optional)**:
+   - Uses Anthropic's Claude (`claude-3-5-sonnet-20241022`) with structured tool-use schemas when `ANTHROPIC_API_KEY` is provided.
+   - System prompts forbid memory hallucinations and mandate that every figure must cite a tool result.
+   - **Automatic Offline Fallback**: If `ANTHROPIC_API_KEY` is absent, the network disconnects, or the API times out, the assistant seamlessly answers via the offline backend with zero user-facing errors.
+
+### Strict Institutional Guardrails
+- **Zero Memory Hallucinations**: The assistant refuses to answer questions about EV numbers, charger counts, or policy from internal memory. Every answer is retrieved from project outputs at query time.
+- **Unranked District Transparency**: If asked about a district lacking official VAHAN EV counts (e.g. Ariyalur), the assistant explicitly states that no gap score exists and the district remains unranked.
+- **UNVERIFIED Propagation**: Ministry of Power (MoP) 2024 indicative 25 km highway spacing figures are strictly labeled as `UNVERIFIED` in every answer.
+- **Prompt Injection Defense**: Text from crowdsourced data files (charger names, operator tags) is sanitized before evaluation to prevent prompt injection.
+- **Local Auditing**: Queries are logged locally to `outputs/assistant_log.jsonl` (stripped of keys, capped size).
+
+### Configuration & Environment
+To enable the optional LLM mode:
+```bash
+# In your .env file or shell:
+export ANTHROPIC_API_KEY="sk-ant-..."
+export ASSISTANT_MODEL="claude-3-5-sonnet-20241022"  # Optional, default
+```
+To run the assistant via API or dashboard:
+```bash
+python run_dashboard.py
+# Open http://127.0.0.1:8000 in your browser
+```
+
+### Example Questions
+- *"Why is Krishnagiri ranked 3rd?"*
+- *"Which highway stretch should we fix first?"*
+- *"Where should we build chargers next?"*
+- *"How sure are we about Krishnagiri?"*
+- *"What is the 80% credible interval for required ports in Chennai?"*
+- *"What happens if EV growth is 30% faster?"*
+- *"What are the project limitations?"*
+
+---
+
 ## Bayesian Uncertainty Layer & Expert Priors
 
 ### What It Does
